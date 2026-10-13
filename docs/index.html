@@ -19,14 +19,20 @@
       </header>
 
       <nav class="tabs" id="tabs">
-        <button class="tab active" type="button" data-tab="orders">批量结单</button>
-        <button class="tab" type="button" data-tab="quick">快捷录单</button>
+        <button class="tab active" type="button" data-tab="orders">结单</button>
         <button class="tab" type="button" data-tab="staff">员工管理</button>
         <button class="tab" type="button" data-tab="payroll">工资统计</button>
       </nav>
 
-      <!-- 批量结单 -->
+      <!-- 结单：粘贴识别 / 快捷录单 两种方式自选 -->
       <section id="panel-orders" class="tab-panel">
+        <div class="mode-switch">
+          <button class="mode-btn active" type="button" data-mode="paste">粘贴小票</button>
+          <button class="mode-btn" type="button" data-mode="quick">快捷录单</button>
+        </div>
+
+        <!-- 方式一：粘贴识别 -->
+        <div id="mode-paste">
         <div class="card">
           <div class="section-title">批量粘贴小票</div>
           <div class="hint">复制一张或多张小票的文字，粘贴到下面。请保留老板、陪陪、项目、金额、数量、总额、日期等字段。</div>
@@ -47,13 +53,13 @@
           <div id="orderEmpty" class="empty">还没有订单记录。</div>
           <div id="orderList"></div>
         </div>
-      </section>
+        </div>
 
-      <!-- 快捷录单 -->
-      <section id="panel-quick" class="tab-panel" hidden>
+        <!-- 方式二：快捷录单（预设点选） -->
+        <div id="mode-quick" hidden>
         <div class="card">
           <div class="section-title">快捷录单</div>
-          <div class="hint">常用信息点一下就能选，不用每次写小票。输入新值后点「添加」会记住，下次直接点。保留「批量结单」页可继续粘贴识别。</div>
+          <div class="hint">常用信息点一下就能选，不用每次写小票。输入新值后点「添加」会记住，下次直接点。想粘贴识别就点上方「粘贴小票」切换。</div>
 
           <div class="field-label">日期</div>
           <input class="text-input" id="qDate" type="date">
@@ -102,6 +108,7 @@
 
           <div class="quick-preview" id="qPreview"></div>
           <button class="primary-btn" type="button" id="quickSubmitBtn">确认结单</button>
+        </div>
         </div>
       </section>
 

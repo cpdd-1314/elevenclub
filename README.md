@@ -2,7 +2,7 @@
 
 批量结单 · 陪陪分配 · 工资结算。纯静态网站，零依赖，数据云端实时同步。
 
-**在线使用**：https://cpdd-1314.github.io/xiaoxi-club/
+**在线使用**：https://cpdd-1314.github.io/elevenclub/
 
 ## 功能
 

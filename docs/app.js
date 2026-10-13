@@ -262,11 +262,13 @@
   var STAFF_KEY = 'clubPayrollStaff_v1';
   var ORDER_KEY = 'clubPayrollOrders_v2';
   var PRESETS_KEY = 'clubPayrollPresets_v1';
+  var MODE_KEY = 'clubPayrollMode_v1';
 
   var DEFAULT_PRESETS = { projects: [], bosses: [], stageManagers: [], gifts: [] };
 
   var state = {
     tab: 'orders',
+    mode: 'paste', // paste=粘贴识别 quick=快捷录单
     batchText: '',
     previewOrders: [],
     previewMessage: '',
@@ -574,14 +576,35 @@
     });
 
     $('panel-orders').hidden = tab !== 'orders';
-    $('panel-quick').hidden = tab !== 'quick';
     $('panel-staff').hidden = tab !== 'staff';
     $('panel-payroll').hidden = tab !== 'payroll';
 
     if (tab === 'payroll') {
       renderPayrollPanel();
     }
-    if (tab === 'quick') {
+    if (tab === 'orders') {
+      applyMode();
+    }
+  }
+
+  /* 录单方式切换：粘贴小票 / 快捷录单（记住上次选择） */
+  function switchMode(mode) {
+    state.mode = mode;
+    try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+    applyMode();
+  }
+
+  function applyMode() {
+    var isQuick = state.mode === 'quick';
+
+    document.querySelectorAll('.mode-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.mode === state.mode);
+    });
+
+    $('mode-paste').hidden = isQuick;
+    $('mode-quick').hidden = !isQuick;
+
+    if (isQuick) {
       renderQuickPanel();
     }
   }
@@ -1161,6 +1184,12 @@
       });
     });
 
+    document.querySelectorAll('.mode-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        switchMode(btn.dataset.mode);
+      });
+    });
+
     $('batchInput').addEventListener('input', function (e) {
       state.batchText = e.target.value;
     });
@@ -1278,6 +1307,13 @@
   }
 
   function init() {
+    try {
+      var savedMode = localStorage.getItem(MODE_KEY);
+      if (savedMode === 'paste' || savedMode === 'quick') {
+        state.mode = savedMode;
+      }
+    } catch (e) {}
+
     bindEvents();
     switchTab('orders');
     $('monthInput').value = state.month;
@@ -1285,7 +1321,10 @@
 
     initCloud()
       .then(loadAll)
-      .then(renderAll)
+      .then(function () {
+        renderAll();
+        applyMode();
+      })
       .catch(function (e) {
         console.error('初始化失败:', e);
       });
