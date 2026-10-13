@@ -7,7 +7,7 @@
 | 版本 | 目录 | 运行方式 |
 |------|------|----------|
 | 微信小程序版 | `miniprogram/` | 用[微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)打开仓库根目录 |
-| Web 网页版 | `web/` | 纯静态页面，已通过 GitHub Pages 自动部署，浏览器直接打开即用 |
+| Web 网页版 | `docs/` | 纯静态页面，已通过 GitHub Pages 自动部署，浏览器直接打开即用 |
 
 ## 功能
 
@@ -31,25 +31,25 @@
 
 ```bash
 # 方式一：Python
-cd web && python3 -m http.server 8000
+cd docs && python3 -m http.server 8000
 
 # 方式二：Node
-npx http-server web -p 8000
+npx http-server docs -p 8000
 ```
 
 然后访问 http://localhost:8000
 
 ## 部署与实时同步（GitHub Pages）
 
-仓库已配置 GitHub Actions 工作流（`.github/workflows/deploy.yml`）：
+仓库使用 GitHub Pages 原生分支部署（Source: `main` 分支 `/docs` 目录）：
 
-- 每次 `git push` 到 `main` 分支 → 自动将 `web/` 目录部署为静态网站
+- 每次 `git push` 到 `main` 分支 → GitHub 自动重新构建并发布网站，**无需任何手动操作**
 - 纯静态文件 + GitHub Pages 全球 CDN，**打开即用，无冷启动、无等待**
-- 也可在仓库 Actions 页面手动点 "Run workflow" 重新部署
+- 构建一般在一分钟内完成，可在仓库 Settings → Pages 页面查看状态
 
-首次推送后，在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions** 即可开通（若用命令行可执行 `gh api -X POST repos/<用户名>/<仓库名>/pages -f build_type=workflow`）。
+网站地址：`https://cpdd-1314.github.io/xiaoxi-club/`
 
-部署完成后网址为：`https://<用户名>.github.io/<仓库名>/`
+> 小票数据保存在访客自己的浏览器里（localStorage），不同设备/浏览器不互通；GitHub 仓库只存放代码，不存放任何业务数据。
 
 ## 目录结构
 
@@ -58,12 +58,11 @@ npx http-server web -p 8000
 │   ├── pages/index/          # 主页面：结单 + 员工 + 工资
 │   ├── components/           # 自定义导航栏组件
 │   └── utils/
-├── web/                      # Web 版（纯静态，无需构建）
+├── docs/                     # Web 版（纯静态，无需构建，GitHub Pages 发布目录）
 │   ├── index.html
 │   ├── styles.css
 │   ├── app.js                # 与小程序版一致的业务逻辑
 │   └── favicon.svg
-├── .github/workflows/        # GitHub Pages 自动部署
 ├── typings/                  # 小程序 TypeScript 类型定义
 ├── project.config.json       # 小程序项目配置
 └── package.json
