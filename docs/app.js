@@ -1,16 +1,14 @@
 /* 十一愿俱乐部 Web 版
- * 业务逻辑与微信小程序版（miniprogram/pages/index/index.ts）完全一致：
- * 小票识别、陪陪平均分配、月度工资结算。
- * 差异仅在数据层与交互层：
- *   wx.getStorageSync / wx.setStorageSync -> localStorage
- *   wx.showModal -> 自定义模态框（Promise 化）
- *   wx.showToast -> 自定义轻提示
- *   this.setData   -> 状态对象 + 定向渲染
+ * 业务逻辑与原小程序版一致：小票识别、陪陪分配、工资结算。
+ * 数据层：
+ *   - 已配置 Supabase（docs/config.js）：云端存储 + Realtime 实时同步，
+ *     任何设备录入，其他设备秒级自动更新
+ *   - 未配置：自动降级为浏览器 localStorage（仅当前浏览器可用）
  */
 (function () {
   'use strict';
 
-  /* ================= 纯业务逻辑（与小程序版一致） ================= */
+  /* ================= 纯业务逻辑（与原小程序版一致） ================= */
 
   function makeId() {
     return Date.now().toString() + Math.random().toString(36).slice(2, 8);
@@ -249,7 +247,7 @@
     };
   }
 
-  /* ================= 状态与本地存储 ================= */
+  /* ================= 状态 ================= */
 
   var STAFF_KEY = 'clubPayrollStaff_v1';
   var ORDER_KEY = 'clubPayrollOrders_v2';
@@ -261,13 +259,96 @@
     previewMessage: '',
     staff: [],
     orders: [],
-    month: currentMonth(),
-
-    staffName: '',
-    staffRate: '30',
-    staffAllowance: '0',
-    staffDeduction: ''
+    month: currentMonth()
   };
+
+  /* ================= 云端（Supabase）数据层 ================= */
+
+  var cloud = {
+    enabled: false,
+    client: null,
+    lastWriteAt: 0,
+    channel: null
+  };
+
+  function isSupabaseConfigured() {
+    return typeof SUPABASE_CONFIG !== 'undefined' &&
+      SUPABASE_CONFIG.supabaseUrl &&
+      SUPABASE_CONFIG.supabaseAnonKey &&
+      SUPABASE_CONFIG.supabaseUrl.indexOf('YOUR-PROJECT') === -1 &&
+      SUPABASE_CONFIG.supabaseAnonKey.indexOf('YOUR-ANON-KEY') === -1;
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error('SDK 加载失败')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function setSyncStatus(text, online) {
+    var el = document.getElementById('syncStatus');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('online', !!online);
+  }
+
+  function initCloud() {
+    if (!isSupabaseConfigured()) {
+      setSyncStatus('本地模式', false);
+      return Promise.resolve(false);
+    }
+
+    return loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2')
+      .then(function () {
+        cloud.client = window.supabase.createClient(
+          SUPABASE_CONFIG.supabaseUrl,
+          SUPABASE_CONFIG.supabaseAnonKey
+        );
+        cloud.enabled = true;
+        setSyncStatus('云端实时同步', true);
+        subscribeRealtime();
+        return true;
+      })
+      .catch(function (e) {
+        showToast('云端连接失败，已切换本地模式');
+        setSyncStatus('本地模式', false);
+        return false;
+      });
+  }
+
+  /* 订阅其他设备的数据变更：一端写入，其他设备秒级刷新 */
+  function subscribeRealtime() {
+    cloud.channel = cloud.client
+      .channel('club-state-changes')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'club_state',
+          filter: 'id=eq.main'
+        },
+        function (payload) {
+          var row = payload && payload.new;
+          if (!row) return;
+
+          var remoteAt = new Date(row.updated_at).getTime();
+          if (remoteAt <= cloud.lastWriteAt) return; // 自己刚写入的回显，忽略
+
+          cloud.lastWriteAt = remoteAt;
+          state.staff = row.staff || [];
+          state.orders = row.orders || [];
+
+          renderAll();
+          showToast('已同步其他设备的新数据');
+        })
+      .subscribe();
+  }
+
+  /* ================= 本地存储（降级模式） ================= */
 
   function readStore(key) {
     try {
@@ -289,22 +370,65 @@
     }
   }
 
+  /* ================= 数据读写（统一入口） ================= */
+
   function loadAll() {
+    if (cloud.enabled) {
+      return cloud.client
+        .from('club_state')
+        .select('staff, orders, updated_at')
+        .eq('id', 'main')
+        .single()
+        .then(function (res) {
+          if (res.error) {
+            if (res.error.code === 'PGRST116') return; // 行不存在，保持空数据
+            throw res.error;
+          }
+          if (res.data) {
+            state.staff = res.data.staff || [];
+            state.orders = res.data.orders || [];
+            cloud.lastWriteAt = new Date(res.data.updated_at).getTime();
+          }
+        })
+        .catch(function (e) {
+          showToast('云端读取失败：' + (e.message || e));
+        });
+    }
+
     state.staff = readStore(STAFF_KEY);
     state.orders = readStore(ORDER_KEY);
+    return Promise.resolve();
   }
 
+  /* 返回 Promise<boolean>：是否保存成功 */
   function saveAll(staff, orders) {
-    if (!writeStore(STAFF_KEY, staff)) return false;
-    if (!writeStore(ORDER_KEY, orders)) return false;
-
     state.staff = staff;
     state.orders = orders;
+    renderAll();
 
-    renderOrdersPanel();
-    renderStaffPanel();
-    renderPayrollPanel();
-    return true;
+    if (cloud.enabled) {
+      return cloud.client
+        .from('club_state')
+        .upsert({ id: 'main', staff: staff, orders: orders })
+        .select('updated_at')
+        .single()
+        .then(function (res) {
+          if (res.error) {
+            showToast('云端保存失败：' + res.error.message);
+            return false;
+          }
+          cloud.lastWriteAt = new Date(res.data.updated_at).getTime();
+          return true;
+        })
+        .catch(function (e) {
+          showToast('云端保存失败：' + (e.message || e));
+          return false;
+        });
+    }
+
+    if (!writeStore(STAFF_KEY, staff)) return Promise.resolve(false);
+    if (!writeStore(ORDER_KEY, orders)) return Promise.resolve(false);
+    return Promise.resolve(true);
   }
 
   /* ================= UI 基础：轻提示 / 模态框 ================= */
@@ -320,8 +444,6 @@
       el.hidden = true;
     }, 2000);
   }
-
-  var modalResolver = null;
 
   function showModal(options) {
     return new Promise(function (resolve) {
@@ -343,14 +465,12 @@
       }
 
       mask.hidden = false;
-      modalResolver = resolve;
 
       function cleanup(confirmed) {
         mask.hidden = true;
         confirmBtn.removeEventListener('click', onConfirm);
         cancelBtn.removeEventListener('click', onCancel);
         mask.removeEventListener('click', onMask);
-        modalResolver = null;
         resolve({ confirm: confirmed });
       }
 
@@ -377,6 +497,12 @@
 
   function $(id) {
     return document.getElementById(id);
+  }
+
+  function renderAll() {
+    renderOrdersPanel();
+    renderStaffPanel();
+    renderPayrollPanel();
   }
 
   function switchTab(tab) {
@@ -504,7 +630,7 @@
     }).join('');
   }
 
-  /* ================= 业务动作（与小程序版一致） ================= */
+  /* ================= 业务动作（与原小程序版一致） ================= */
 
   function parseBatch() {
     var raw = (state.batchText || '').trim();
@@ -631,9 +757,9 @@
       }).then(function (res) {
         if (!res.confirm) return;
 
-        var updated = existing.concat(newOrders);
+        saveAll(state.staff, existing.concat(newOrders)).then(function (ok) {
+          if (!ok) return;
 
-        if (saveAll(state.staff, updated)) {
           state.batchText = '';
           state.previewOrders = [];
           state.previewMessage = '';
@@ -642,7 +768,7 @@
           renderPreviewPanel();
 
           showToast('保存成功');
-        }
+        });
       });
     }
 
@@ -698,14 +824,16 @@
       deduction: deduction
     }]);
 
-    if (saveAll(updated, state.orders)) {
+    saveAll(updated, state.orders).then(function (ok) {
+      if (!ok) return;
+
       $('staffName').value = '';
       $('staffRate').value = '30';
       $('staffAllowance').value = '0';
       $('staffDeduction').value = '0';
 
       showToast('员工已添加');
-    }
+    });
   }
 
   function deleteStaff(id) {
@@ -798,13 +926,17 @@
   }
 
   function init() {
-    loadAll();
     bindEvents();
     switchTab('orders');
     $('monthInput').value = state.month;
-    renderOrdersPanel();
-    renderStaffPanel();
-    renderPayrollPanel();
+    renderAll();
+
+    initCloud()
+      .then(loadAll)
+      .then(renderAll)
+      .catch(function (e) {
+        console.error('初始化失败:', e);
+      });
   }
 
   if (typeof document !== 'undefined' && document.readyState !== 'loading') {

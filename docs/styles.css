@@ -61,6 +61,27 @@ body {
   margin-top: 8px;
 }
 
+/* ---------- 同步状态标识 ---------- */
+.sync-status {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: #e4e0ec;
+  color: #6f6580;
+}
+
+.sync-status.online {
+  background: #dcf2e5;
+  color: #1d7a4c;
+}
+
+.sync-status.online::before {
+  content: "● ";
+  color: #248354;
+}
+
 /* ---------- 选项卡 ---------- */
 .tabs {
   display: flex;
