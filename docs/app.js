@@ -570,6 +570,10 @@
   function switchTab(tab) {
     state.tab = tab;
 
+    // 切标签时收起详情页和 ⋯ 菜单
+    if (!$('detailPage').hidden) closeDetail();
+    if (!$('cardMenu').hidden) closeCardMenu();
+
     var tabs = document.querySelectorAll('.tab');
     tabs.forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -905,6 +909,204 @@
     });
   }
 
+  /* ================= 卡片 ⋯ 菜单与详情页 ================= */
+
+  var cardMenu = { type: null, id: null, name: null };
+  var detailState = { type: null, id: null, name: null };
+
+  function openCardMenu(type, id, name) {
+    cardMenu = { type: type, id: id, name: name || '' };
+
+    var viewBtn = $('cardMenuView');
+    var delBtn = $('cardMenuDelete');
+
+    if (type === 'order') {
+      $('cardMenuTitle').textContent = '订单操作';
+      viewBtn.textContent = '查看订单详情';
+      delBtn.textContent = '删除订单';
+      delBtn.hidden = false;
+    } else if (type === 'staff') {
+      $('cardMenuTitle').textContent = '陪陪操作';
+      viewBtn.textContent = '查看陪陪详情';
+      delBtn.textContent = '删除陪陪';
+      delBtn.hidden = false;
+    } else {
+      $('cardMenuTitle').textContent = '工资操作';
+      viewBtn.textContent = '查看工资明细';
+      delBtn.hidden = true;
+    }
+
+    $('cardMenu').hidden = false;
+  }
+
+  function closeCardMenu() {
+    $('cardMenu').hidden = true;
+    cardMenu = { type: null, id: null, name: null };
+  }
+
+  /* 菜单动作：查看详情 → 跳详情页；删除 → 走原删除流程 */
+  function cardMenuAct(action) {
+    var type = cardMenu.type;
+    var id = cardMenu.id;
+    var name = cardMenu.name;
+    closeCardMenu();
+
+    if (action === 'view') {
+      openDetail(type, id, name);
+    } else if (action === 'delete') {
+      if (type === 'order') deleteOrder(id);
+      else if (type === 'staff') deleteStaff(id);
+    }
+  }
+
+  function openDetail(type, id, name) {
+    detailState = { type: type, id: id, name: name || '' };
+    renderDetail();
+    $('detailPage').hidden = false;
+  }
+
+  function closeDetail() {
+    $('detailPage').hidden = true;
+    detailState = { type: null, id: null, name: null };
+  }
+
+  function detailRow(label, value) {
+    return '<div class="detail-row"><span class="detail-label">' +
+      escapeHtml(label) + '</span><span class="detail-value">' +
+      escapeHtml(value) + '</span></div>';
+  }
+
+  function renderDetail() {
+    var body = $('detailBody');
+    var title = '详情';
+    var html = '';
+
+    if (detailState.type === 'order') {
+      var order = null;
+      state.orders.forEach(function (item) {
+        if (item.id === detailState.id) order = item;
+      });
+      if (!order) { closeDetail(); return; }
+
+      title = '订单详情';
+      html = '<div class="card">' +
+        detailRow('日期', order.date) +
+        detailRow('老板', order.boss) +
+        detailRow('项目', order.project || '—') +
+        detailRow('礼物', order.gift || '—') +
+        detailRow('场控', order.stageManager || '—') +
+        detailRow('单价', '¥' + money(order.unitPrice)) +
+        detailRow('数量', order.quantity) +
+        detailRow('总额', '¥' + money(order.amount)) +
+        '</div>' +
+        '<div class="card"><div class="section-title">分钱明细</div>' +
+        order.allocations.map(function (a) {
+          return '<div class="allocation-line"><span>' + escapeHtml(a.staffName) +
+            '</span><span>¥' + escapeHtml(money(a.amount)) + '</span></div>';
+        }).join('') +
+        '</div>';
+
+      if (order.warning) {
+        html += '<div class="card"><div class="hint">⚠️ ' + escapeHtml(order.warning) + '</div></div>';
+      }
+
+      html += '<button class="danger-btn" type="button" data-action="detail-delete-order"' +
+        ' data-id="' + escapeHtml(order.id) + '">删除订单</button>';
+
+    } else if (detailState.type === 'staff') {
+      var person = null;
+      state.staff.forEach(function (item) {
+        if (item.id === detailState.id) person = item;
+      });
+      if (!person) { closeDetail(); return; }
+
+      var payroll = computePayroll(state.staff, state.orders, state.month);
+      var row = null;
+      payroll.rows.forEach(function (r) {
+        if (r.id === person.id) row = r;
+      });
+
+      title = '陪陪详情';
+      html = '<div class="card">' +
+        detailRow('姓名', person.name) +
+        detailRow('提成比例', person.rate + '%') +
+        detailRow('每月补贴', '¥' + money(person.allowance)) +
+        detailRow('每月扣款', '¥' + money(person.deduction)) +
+        '</div>' +
+        '<div class="card"><div class="section-title">' + escapeHtml(state.month) + ' 业绩</div>' +
+        detailRow('参与分配', (row ? row.orderCount : 0) + ' 次') +
+        detailRow('分配金额', '¥' + (row ? row.allocatedText : '0.00')) +
+        detailRow('提成', '¥' + (row ? row.commissionText : '0.00')) +
+        detailRow('补贴', '¥' + (row ? row.allowanceText : '0.00')) +
+        detailRow('扣款', '¥' + (row ? row.deductionText : '0.00')) +
+        detailRow('应发工资', '¥' + (row ? row.payableText : '0.00')) +
+        '</div>' +
+        '<button class="danger-btn" type="button" data-action="detail-delete-staff"' +
+        ' data-id="' + escapeHtml(person.id) + '">删除陪陪</button>';
+
+    } else if (detailState.type === 'payroll') {
+      var personName = detailState.name;
+      var person2 = null;
+      state.staff.forEach(function (item) {
+        if (item.name === personName) person2 = item;
+      });
+
+      var monthOrders = state.orders.filter(function (order) {
+        return order.date.indexOf(state.month) === 0;
+      });
+      var myOrders = monthOrders.filter(function (order) {
+        return order.allocations.some(function (a) {
+          return a.staffName === personName;
+        });
+      });
+
+      var ordersHtml = myOrders.length === 0
+        ? '<div class="card"><div class="hint">这个月还没有参与分配的订单。</div></div>'
+        : myOrders.map(function (order) {
+            var myAlloc = null;
+            order.allocations.forEach(function (a) {
+              if (a.staffName === personName) myAlloc = a;
+            });
+            var myCommission = person2 && myAlloc
+              ? Math.round(myAlloc.amount * person2.rate) / 100
+              : 0;
+            return '<div class="list-card"><div class="list-card-main">' +
+              '<div class="list-card-top"><span class="list-card-title">' +
+              escapeHtml(order.project || '未填项目') + '</span>' +
+              '<span class="amount">¥' + escapeHtml(money(myAlloc ? myAlloc.amount : 0)) + '</span></div>' +
+              '<div class="hint">' + escapeHtml(order.date) + ' · ' + escapeHtml(order.boss) +
+              ' · 订单总额 ¥' + escapeHtml(money(order.amount)) +
+              ' · 本笔提成 ¥' + escapeHtml(money(myCommission)) + '</div>' +
+              '</div></div>';
+          }).join('');
+
+      title = personName + ' 的工资明细';
+      html = '<div class="card">' +
+        detailRow('结算月份', state.month) +
+        detailRow('参与订单', myOrders.length + ' 笔') +
+        '</div>' +
+        '<div class="section-title">每笔订单</div>' + ordersHtml;
+
+      var payroll2 = computePayroll(state.staff, state.orders, state.month);
+      var row2 = null;
+      payroll2.rows.forEach(function (r) {
+        if (r.name === personName) row2 = r;
+      });
+      if (row2) {
+        html += '<div class="card"><div class="section-title">工资构成</div>' +
+          detailRow('分配合计', '¥' + row2.allocatedText) +
+          detailRow('提成（' + (person2 ? person2.rate : 0) + '%）', '¥' + row2.commissionText) +
+          detailRow('补贴', '¥' + row2.allowanceText) +
+          detailRow('扣款', '¥' + row2.deductionText) +
+          detailRow('应发工资', '¥' + row2.payableText) +
+          '</div>';
+      }
+    }
+
+    $('detailTitle').textContent = title;
+    body.innerHTML = html;
+  }
+
   function quickSubmit() {
     var boss = quickForm.boss.trim();
     var project = quickForm.project.trim();
@@ -1039,21 +1241,17 @@
 
     var list = $('orderList');
     list.innerHTML = state.orders.map(function (order) {
-      var html = '<div class="order-item">' +
-        '<div class="order-top"><span>' + escapeHtml(order.project) + '</span>' +
+      return '<div class="list-card">' +
+        '<div class="list-card-main">' +
+        '<div class="list-card-top"><span class="list-card-title">' +
+        escapeHtml(order.project || '未填项目') + '</span>' +
         '<span class="amount">¥' + escapeHtml(money(order.amount)) + '</span></div>' +
-        '<div class="hint">日期：' + escapeHtml(order.date) + '</div>' +
-        '<div class="hint">老板：' + escapeHtml(order.boss) + '　场控：' + escapeHtml(order.stageManager || '—') + '</div>' +
-        '<div class="hint">陪陪：' + order.companions.map(escapeHtml).join(' ') + '</div>';
-
-      order.allocations.forEach(function (allocation) {
-        html += '<div class="allocation-line">' +
-          '<span>' + escapeHtml(allocation.staffName) + '</span>' +
-          '<span>¥' + escapeHtml(money(allocation.amount)) + '</span></div>';
-      });
-
-      html += '<button class="delete-btn" type="button" data-action="delete-order" data-id="' + escapeHtml(order.id) + '">删除订单</button>';
-      return html + '</div>';
+        '<div class="hint">' + escapeHtml(order.date) + ' · ' + escapeHtml(order.boss) +
+        ' · ' + order.companions.length + ' 人</div>' +
+        '</div>' +
+        '<button type="button" class="more-btn" data-action="card-menu" data-type="order"' +
+        ' data-id="' + escapeHtml(order.id) + '" title="更多操作">⋯</button>' +
+        '</div>';
     }).join('');
   }
 
@@ -1063,12 +1261,16 @@
 
     var list = $('staffList');
     list.innerHTML = state.staff.map(function (person) {
-      return '<div class="staff-item">' +
-        '<div class="staff-info">' +
-        '<div class="staff-name">' + escapeHtml(person.name) + '</div>' +
-        '<div class="hint">提成 ' + escapeHtml(person.rate) + '% · 补贴 ¥' + escapeHtml(person.allowance) + ' · 扣款 ¥' + escapeHtml(person.deduction) + '</div>' +
+      return '<div class="list-card">' +
+        '<div class="list-card-main">' +
+        '<div class="list-card-top"><span class="list-card-title">' +
+        escapeHtml(person.name) + '</span></div>' +
+        '<div class="hint">提成 ' + escapeHtml(person.rate) + '% · 补贴 ¥' +
+        escapeHtml(money(person.allowance)) + ' · 扣款 ¥' +
+        escapeHtml(money(person.deduction)) + '</div>' +
         '</div>' +
-        '<button class="delete-btn" type="button" data-action="delete-staff" data-id="' + escapeHtml(person.id) + '">删除</button>' +
+        '<button type="button" class="more-btn" data-action="card-menu" data-type="staff"' +
+        ' data-id="' + escapeHtml(person.id) + '" title="更多操作">⋯</button>' +
         '</div>';
     }).join('');
   }
@@ -1083,14 +1285,17 @@
 
     var list = $('payrollRows');
     list.innerHTML = result.rows.map(function (person) {
-      return '<div class="card">' +
-        '<div class="staff-name">' + escapeHtml(person.name) + '</div>' +
-        '<div class="data-line"><span>参与分配次数</span><span>' + escapeHtml(person.orderCount) + '</span></div>' +
-        '<div class="data-line"><span>分配金额</span><span>¥' + escapeHtml(person.allocatedText) + '</span></div>' +
-        '<div class="data-line"><span>提成</span><span>¥' + escapeHtml(person.commissionText) + '</span></div>' +
-        '<div class="data-line"><span>补贴</span><span>¥' + escapeHtml(person.allowanceText) + '</span></div>' +
-        '<div class="data-line"><span>扣款</span><span>¥' + escapeHtml(person.deductionText) + '</span></div>' +
-        '<div class="data-line"><span>应发工资</span><span class="amount">¥' + escapeHtml(person.payableText) + '</span></div>' +
+      return '<div class="list-card">' +
+        '<div class="list-card-main">' +
+        '<div class="list-card-top"><span class="list-card-title">' +
+        escapeHtml(person.name) + '</span>' +
+        '<span class="amount">¥' + escapeHtml(person.payableText) + '</span></div>' +
+        '<div class="hint">' + escapeHtml(state.month) + ' · 参与 ' +
+        escapeHtml(person.orderCount) + ' 次 · 提成 ¥' +
+        escapeHtml(person.commissionText) + '</div>' +
+        '</div>' +
+        '<button type="button" class="more-btn" data-action="card-menu" data-type="payroll"' +
+        ' data-name="' + escapeHtml(person.name) + '" title="更多操作">⋯</button>' +
         '</div>';
     }).join('');
   }
@@ -1473,7 +1678,30 @@
       renderPayrollPanel();
     });
 
-    // 列表删除按钮事件委托
+    // 卡片 ⋯ 菜单
+    $('cardMenuView').addEventListener('click', function () {
+      cardMenuAct('view');
+    });
+    $('cardMenuDelete').addEventListener('click', function () {
+      cardMenuAct('delete');
+    });
+    $('cardMenuCancel').addEventListener('click', closeCardMenu);
+    $('cardMenu').addEventListener('click', function (e) {
+      if (e.target === this) closeCardMenu();
+    });
+
+    // 详情页返回
+    $('detailBack').addEventListener('click', closeDetail);
+
+    // Esc 关闭弹层（选择器/卡片菜单/详情页）
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (!$('detailPage').hidden) { closeDetail(); return; }
+      if (!$('cardMenu').hidden) { closeCardMenu(); return; }
+      if (!$('selectPicker').hidden) { closeSelectPicker(); return; }
+    });
+
+    // 列表按钮事件委托：⋯ 菜单 / 详情页内删除
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
@@ -1481,10 +1709,18 @@
       var action = btn.dataset.action;
       var id = btn.dataset.id;
 
-      if (action === 'delete-order') {
+      if (action === 'card-menu') {
+        openCardMenu(btn.dataset.type, id, btn.dataset.name);
+      } else if (action === 'delete-order') {
         deleteOrder(id);
       } else if (action === 'delete-staff') {
         deleteStaff(id);
+      } else if (action === 'detail-delete-order') {
+        deleteOrder(id);
+        closeDetail();
+      } else if (action === 'detail-delete-staff') {
+        deleteStaff(id);
+        closeDetail();
       }
     });
   }

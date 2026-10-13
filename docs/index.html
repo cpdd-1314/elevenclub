@@ -201,6 +201,25 @@
     </div>
   </div>
 
+  <!-- 卡片操作菜单（⋯） -->
+  <div id="cardMenu" class="modal-mask picker-mask" hidden>
+    <div class="menu-sheet">
+      <div class="menu-title" id="cardMenuTitle">操作</div>
+      <button class="menu-item" type="button" id="cardMenuView">查看详情</button>
+      <button class="menu-item danger" type="button" id="cardMenuDelete">删除</button>
+      <button class="menu-item cancel" type="button" id="cardMenuCancel">取消</button>
+    </div>
+  </div>
+
+  <!-- 详情页（全屏，可返回） -->
+  <div id="detailPage" class="detail-page" hidden>
+    <div class="detail-header">
+      <button type="button" class="detail-back" id="detailBack">← 返回</button>
+      <span class="detail-title" id="detailTitle">详情</span>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+
   <!-- 轻提示（替代 wx.showToast） -->
   <div id="toast" class="toast" hidden></div>
 
