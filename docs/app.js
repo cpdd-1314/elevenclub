@@ -604,6 +604,9 @@
     $('mode-paste').hidden = isQuick;
     $('mode-quick').hidden = !isQuick;
 
+    // 离开快捷模式时收起预设选择器
+    if (!isQuick && pickerState.group) closePresetPicker();
+
     if (isQuick) {
       renderQuickPanel();
     }
@@ -625,7 +628,7 @@
     var html = '';
 
     if (values.length === 0) {
-      html = '<div class="chips-empty">还没有预设，在下方输入后点「添加」</div>';
+      html = '<div class="chips-empty">还没有预设，点下方「＋ 添加」从历史订单里选</div>';
     } else {
       html = values.map(function (value) {
         var active = value === current ? ' active' : '';
@@ -700,21 +703,31 @@
     renderQuickPreview();
   }
 
-  /* 添加预设（去重，最多保留 30 个） */
-  function quickAddPreset(groupKey, value) {
-    var v = (value || '').trim();
-    if (!v) return;
+  /* 批量添加预设（去重，最多保留 30 个，一次保存） */
+  function quickAddPresets(groupKey, values) {
+    var existing = state.presets[groupKey] || [];
+    var additions = [];
+    values.forEach(function (raw) {
+      var v = (raw || '').trim();
+      if (!v) return;
+      if (existing.indexOf(v) !== -1) return;
+      if (additions.indexOf(v) !== -1) return;
+      additions.push(v);
+    });
+    if (additions.length === 0) return Promise.resolve(false);
 
-    var list = (state.presets[groupKey] || []).slice();
-    if (list.indexOf(v) !== -1) return;
-
-    list.unshift(v);
+    var list = additions.concat(existing);
     if (list.length > 30) list = list.slice(0, 30);
     state.presets[groupKey] = list;
 
-    saveAll(state.staff, state.orders, state.presets).then(function () {
+    return saveAll(state.staff, state.orders, state.presets).then(function () {
       renderQuickPanel();
+      return true;
     });
+  }
+
+  function quickAddPreset(groupKey, value) {
+    return quickAddPresets(groupKey, [value]);
   }
 
   function quickRemovePreset(groupKey, value) {
@@ -725,6 +738,110 @@
 
     saveAll(state.staff, state.orders, state.presets).then(function () {
       renderQuickPanel();
+    });
+  }
+
+  /* ================= 预设选择器：从历史订单选已有值 ================= */
+
+  var pickerState = { group: null, selected: [] };
+
+  /* 从历史订单收集某组的候选值：去重、去空，已是预设的标记出来 */
+  function collectCandidates(groupKey) {
+    var group = PRESET_GROUPS.filter(function (g) { return g.key === groupKey; })[0];
+    if (!group) return [];
+
+    var seen = {};
+    var list = [];
+    state.orders.forEach(function (order) {
+      var value = (order[group.field] || '').trim();
+      if (!value || seen[value]) return;
+      seen[value] = true;
+      list.push(value);
+    });
+
+    var presets = state.presets[groupKey] || [];
+    return list.map(function (value) {
+      return { value: value, added: presets.indexOf(value) !== -1 };
+    });
+  }
+
+  function openPresetPicker(groupKey) {
+    var group = PRESET_GROUPS.filter(function (g) { return g.key === groupKey; })[0];
+    if (!group) return;
+
+    pickerState.group = group;
+    pickerState.selected = [];
+    $('pickerTitle').textContent = '添加' + group.label + '预设';
+    // 手动输入框预填顶部输入框里已打的内容，省得重复打字
+    $('pickerInput').value = quickForm[group.field] || '';
+    renderPresetPicker();
+    $('presetPicker').hidden = false;
+  }
+
+  function closePresetPicker() {
+    $('presetPicker').hidden = true;
+    pickerState.group = null;
+    pickerState.selected = [];
+  }
+
+  function renderPresetPicker() {
+    var group = pickerState.group;
+    if (!group) return;
+
+    var candidates = collectCandidates(group.key);
+    var html = '';
+
+    if (candidates.length === 0) {
+      html = '<div class="picker-empty">历史订单里还没有' + escapeHtml(group.label) +
+        '记录，结几单后这里就能直接选；也可以在下方手动输入新的。</div>';
+    } else {
+      html = '<div class="picker-tip">点一下选中，可多选，选完点底部按钮添加：</div>' +
+        candidates.map(function (item) {
+          if (item.added) {
+            return '<span class="picker-item added">' + escapeHtml(item.value) +
+              '<span class="picker-flag">已添加</span></span>';
+          }
+          var selected = pickerState.selected.indexOf(item.value) !== -1 ? ' selected' : '';
+          return '<span class="picker-item' + selected + '" data-value="' +
+            escapeHtml(item.value) + '">' + escapeHtml(item.value) + '</span>';
+        }).join('');
+    }
+
+    $('pickerList').innerHTML = html;
+    $('pickerConfirm').textContent = '确定添加（' + pickerState.selected.length + '）';
+    $('pickerConfirm').disabled = pickerState.selected.length === 0;
+  }
+
+  function togglePickerItem(value) {
+    var idx = pickerState.selected.indexOf(value);
+    if (idx === -1) {
+      pickerState.selected.push(value);
+    } else {
+      pickerState.selected.splice(idx, 1);
+    }
+    renderPresetPicker();
+  }
+
+  function pickerConfirmAdd() {
+    if (!pickerState.group || pickerState.selected.length === 0) return;
+    var group = pickerState.group;
+    var values = pickerState.selected.slice();
+
+    quickAddPresets(group.key, values).then(function (added) {
+      closePresetPicker();
+      if (added) showToast('已添加 ' + values.length + ' 个' + group.label + '预设');
+    });
+  }
+
+  function pickerManualAdd() {
+    if (!pickerState.group) return;
+    var v = $('pickerInput').value.trim();
+    if (!v) { showToast('请输入名称'); return; }
+
+    quickAddPresets(pickerState.group.key, [v]).then(function (added) {
+      $('pickerInput').value = '';
+      renderPresetPicker();
+      if (added) showToast('已添加「' + v + '」');
     });
   }
 
@@ -1247,12 +1364,32 @@
       $(group.field + 'Input').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          quickAddPreset(group.key, quickForm[group.field]);
+          openPresetPicker(group.key);
         }
       });
+      // 「＋ 添加」打开选择器：从历史订单选已有值，也可手动输入
       $(group.field + 'Add').addEventListener('click', function () {
-        quickAddPreset(group.key, quickForm[group.field]);
+        openPresetPicker(group.key);
       });
+    });
+
+    // 预设选择器
+    $('pickerClose').addEventListener('click', closePresetPicker);
+    $('presetPicker').addEventListener('click', function (e) {
+      if (e.target === this) closePresetPicker();
+    });
+    $('pickerConfirm').addEventListener('click', pickerConfirmAdd);
+    $('pickerInputAdd').addEventListener('click', pickerManualAdd);
+    $('pickerInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        pickerManualAdd();
+      }
+    });
+    $('pickerList').addEventListener('click', function (e) {
+      var item = e.target.closest('.picker-item');
+      if (!item || item.classList.contains('added')) return;
+      togglePickerItem(item.dataset.value);
     });
 
     // 预设 chips：点选填入 / 删除预设；陪陪 chips：多选切换

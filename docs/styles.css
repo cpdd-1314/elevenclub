@@ -554,6 +554,116 @@ body {
   font-weight: bold;
 }
 
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- 预设选择器（底部弹层） ---------- */
+.picker-mask {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.picker-sheet {
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 520px;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.picker-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #3d3450;
+}
+
+.picker-close {
+  border: none;
+  background: #f1edf5;
+  color: #5c5468;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.picker-body {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 60px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.picker-tip {
+  font-size: 12px;
+  color: #8a8199;
+  margin-bottom: 10px;
+}
+
+.picker-empty {
+  font-size: 13px;
+  color: #8a8199;
+  line-height: 1.7;
+  padding: 20px 6px;
+  text-align: center;
+}
+
+.picker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 10px 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f4f0f8;
+  border: 1.5px solid #e4dcf0;
+  color: #4c4364;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.picker-item.selected {
+  background: #7651a8;
+  border-color: #7651a8;
+  color: #fff;
+}
+
+.picker-item.added {
+  background: #eef6f0;
+  border-color: #cfe6d8;
+  color: #248354;
+  cursor: default;
+}
+
+.picker-flag {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.picker-manual {
+  border-top: 1px dashed #e4dcf0;
+  padding-top: 12px;
+  margin-bottom: 12px;
+}
+
 /* ---------- 轻提示 ---------- */
 .toast {
   position: fixed;
