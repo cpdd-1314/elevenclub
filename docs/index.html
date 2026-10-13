@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="十一愿俱乐部 - 批量结单 · 陪陪分配 · 工资结算">
+  <title>十一愿俱乐部</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-scroll">
+    <main class="page">
+      <header class="hero">
+        <div class="hero-title">十一愿俱乐部</div>
+        <div class="hero-subtitle">批量结单 · 陪陪分配 · 工资结算</div>
+      </header>
+
+      <nav class="tabs" id="tabs">
+        <button class="tab active" type="button" data-tab="orders">批量结单</button>
+        <button class="tab" type="button" data-tab="staff">员工管理</button>
+        <button class="tab" type="button" data-tab="payroll">工资统计</button>
+      </nav>
+
+      <!-- 批量结单 -->
+      <section id="panel-orders" class="tab-panel">
+        <div class="card">
+          <div class="section-title">批量粘贴小票</div>
+          <div class="hint">复制一张或多张小票的文字，粘贴到下面。请保留老板、陪陪、项目、金额、数量、总额、日期等字段。</div>
+          <textarea
+            id="batchInput"
+            class="batch-input"
+            placeholder="在这里粘贴小票文字……"
+          ></textarea>
+          <button class="primary-btn" type="button" id="parseBtn">识别小票</button>
+        </div>
+
+        <div id="previewMessage" class="message-card" hidden></div>
+        <div id="previewList"></div>
+        <button id="saveOrdersBtn" class="primary-btn" type="button" hidden>确认并保存有效订单</button>
+
+        <div class="card">
+          <div class="section-title">已保存订单（<span id="orderCount">0</span>）</div>
+          <div id="orderEmpty" class="empty">还没有订单记录。</div>
+          <div id="orderList"></div>
+        </div>
+      </section>
+
+      <!-- 员工管理 -->
+      <section id="panel-staff" class="tab-panel" hidden>
+        <div class="card">
+          <div class="section-title">添加员工</div>
+
+          <div class="field-label">员工姓名</div>
+          <input class="text-input" id="staffName" type="text" placeholder="例如：冷屿">
+
+          <div class="field-label">提成比例（%）</div>
+          <input class="text-input" id="staffRate" type="number" min="0" max="100" step="1" value="30" placeholder="例如：30">
+
+          <div class="field-label">每月补贴（元）</div>
+          <input class="text-input" id="staffAllowance" type="number" min="0" step="0.01" value="0" placeholder="0">
+
+          <div class="field-label">每月扣款（元）</div>
+          <input class="text-input" id="staffDeduction" type="number" min="0" step="0.01" value="0" placeholder="0">
+
+          <button class="primary-btn" type="button" id="addStaffBtn">添加员工</button>
+        </div>
+
+        <div class="card">
+          <div class="section-title">员工名单（<span id="staffCount">0</span>）</div>
+          <div id="staffEmpty" class="empty">请先添加员工。</div>
+          <div id="staffList"></div>
+        </div>
+      </section>
+
+      <!-- 工资统计 -->
+      <section id="panel-payroll" class="tab-panel" hidden>
+        <div class="card">
+          <div class="section-title">月度工资结算</div>
+          <div class="field-label">结算月份（YYYY-MM）</div>
+          <input class="text-input" id="monthInput" type="month" placeholder="例如：2026-10">
+
+          <div class="summary-cell">
+            <div class="summary-label">订单总额</div>
+            <div class="summary-value" id="payrollOrderTotal">¥0.00</div>
+          </div>
+          <div class="summary-cell">
+            <div class="summary-label">陪陪分配总额</div>
+            <div class="summary-value" id="payrollAllocationTotal">¥0.00</div>
+          </div>
+          <div class="summary-cell">
+            <div class="summary-label">提成合计</div>
+            <div class="summary-value" id="payrollCommissionTotal">¥0.00</div>
+          </div>
+          <div class="summary-cell">
+            <div class="summary-label">应发工资合计</div>
+            <div class="summary-value highlight" id="payrollPayableTotal">¥0.00</div>
+          </div>
+
+          <div class="hint">工资＝个人分配金额 × 提成比例 + 补贴 − 扣款。补贴和扣款按员工设置，每月最多各计一次。</div>
+        </div>
+        <div id="payrollRows"></div>
+      </section>
+
+      <footer class="footer">保存前请核对小票日期、金额和陪陪名单。</footer>
+    </main>
+  </div>
+
+  <!-- 模态框（替代 wx.showModal） -->
+  <div id="modalMask" class="modal-mask" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-content" id="modalContent"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn modal-cancel" type="button" id="modalCancel"></button>
+        <button class="modal-btn modal-confirm" type="button" id="modalConfirm"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 轻提示（替代 wx.showToast） -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

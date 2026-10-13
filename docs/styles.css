@@ -1,0 +1,423 @@
+/* 十一愿俱乐部 Web 版样式
+   视觉与微信小程序版保持一致：紫色主题、卡片式布局 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* hidden 属性必须优先于组件的 display 设置 */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #edeaf2;
+  color: #30283b;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-scroll {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.page {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 16px 14px 48px;
+  background: #f7f5fa;
+  box-shadow: 0 0 24px rgba(48, 40, 59, 0.08);
+}
+
+/* ---------- 头部 ---------- */
+.hero {
+  padding: 26px 16px;
+  border-radius: 16px;
+  background: #eee3fa;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.hero-title {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.hero-subtitle {
+  font-size: 12px;
+  color: #776982;
+  margin-top: 8px;
+}
+
+/* ---------- 选项卡 ---------- */
+.tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 16px;
+  gap: 4px;
+}
+
+.tab {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  padding: 11px 0;
+  color: #776982;
+  font-size: 13px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab.active {
+  background: #7651a8;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.sub-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.hint {
+  color: #887f91;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 6px 0;
+}
+
+/* ---------- 表单 ---------- */
+.batch-input {
+  width: 100%;
+  height: 200px;
+  padding: 12px;
+  border: 1px solid #e8e0f0;
+  border-radius: 10px;
+  background: #fcfbfe;
+  font-size: 13px;
+  line-height: 1.7;
+  margin-top: 12px;
+  resize: vertical;
+  font-family: inherit;
+  color: #30283b;
+}
+
+.batch-input:focus {
+  outline: none;
+  border-color: #7651a8;
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: bold;
+  margin: 14px 0 7px;
+}
+
+.text-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  background: #fcfbfe;
+  border: 1px solid #e8e0f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #30283b;
+  font-family: inherit;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #7651a8;
+}
+
+/* ---------- 按钮 ---------- */
+.primary-btn {
+  display: block;
+  width: 100%;
+  background: #7651a8;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  padding: 12px 0;
+  margin-top: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.primary-btn:hover {
+  opacity: 0.9;
+}
+
+.primary-btn:active {
+  opacity: 0.8;
+}
+
+.delete-btn {
+  margin-top: 10px;
+  background: #fff0f0;
+  color: #b34b55;
+  border: none;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.delete-btn:hover {
+  background: #ffe3e3;
+}
+
+/* ---------- 提示信息 ---------- */
+.message-card {
+  background: #eee7fa;
+  border-radius: 11px;
+  padding: 14px;
+  margin-bottom: 12px;
+  color: #5f4287;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+/* ---------- 数据行 ---------- */
+.data-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1edf5;
+  font-size: 13px;
+}
+
+.data-line > span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.amount {
+  color: #7651a8;
+  font-weight: bold;
+}
+
+.allocation-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px dashed #eee7f4;
+  font-size: 13px;
+}
+
+.warning {
+  color: #a44335;
+  background: #fff1ed;
+  padding: 10px;
+  border-radius: 9px;
+  line-height: 1.7;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.status-ok {
+  color: #248354;
+  margin-top: 9px;
+  font-size: 12px;
+}
+
+/* ---------- 订单 / 员工列表 ---------- */
+.order-item,
+.staff-item {
+  padding: 13px 0;
+  border-top: 1px solid #eee8f3;
+}
+
+.order-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: bold;
+  gap: 12px;
+}
+
+.staff-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.staff-info {
+  flex: 1;
+}
+
+.staff-name {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+/* ---------- 工资统计 ---------- */
+.summary-cell {
+  background: #f7f2fc;
+  padding: 13px;
+  border-radius: 10px;
+  margin-top: 9px;
+}
+
+.summary-label {
+  color: #83768e;
+  font-size: 12px;
+  margin-bottom: 7px;
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.highlight {
+  color: #7651a8;
+}
+
+/* ---------- 空状态 / 页脚 ---------- */
+.empty {
+  color: #958a9f;
+  text-align: center;
+  padding: 22px 8px;
+  font-size: 13px;
+}
+
+.footer {
+  color: #a196ad;
+  font-size: 11px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ---------- 模态框 ---------- */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(48, 40, 59, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.modal-mask[hidden] {
+  display: none;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.modal-content {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5c5468;
+  margin-bottom: 18px;
+  white-space: pre-line;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-btn {
+  flex: 1;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modal-cancel {
+  background: #f1edf5;
+  color: #5c5468;
+}
+
+.modal-confirm {
+  background: #7651a8;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* ---------- 轻提示 ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  background: rgba(48, 40, 59, 0.85);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  z-index: 200;
+  max-width: 80%;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 560px) {
+  .page {
+    box-shadow: none;
+  }
+}

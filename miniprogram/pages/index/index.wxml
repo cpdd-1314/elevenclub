@@ -1,0 +1,151 @@
+<scroll-view scroll-y="true" class="page-scroll">
+  <view class="page">
+    <view class="hero">
+      <view class="hero-title">十一愿俱乐部</view>
+      <view class="hero-subtitle">批量结单 · 陪陪分配 · 工资结算</view>
+    </view>
+
+    <view class="tabs">
+      <view class="tab {{tab === 'orders' ? 'active' : ''}}" data-tab="orders" bindtap="setTab">批量结单</view>
+      <view class="tab {{tab === 'staff' ? 'active' : ''}}" data-tab="staff" bindtap="setTab">员工管理</view>
+      <view class="tab {{tab === 'payroll' ? 'active' : ''}}" data-tab="payroll" bindtap="setTab">工资统计</view>
+    </view>
+
+    <view wx:if="{{tab === 'orders'}}">
+      <view class="card">
+        <view class="section-title">批量粘贴小票</view>
+        <view class="hint">复制一张或多张小票的文字，粘贴到下面。请保留老板、陪陪、项目、金额、数量、总额、日期等字段。</view>
+
+        <textarea
+          class="batch-input"
+          value="{{batchText}}"
+          bindinput="onBatchInput"
+          placeholder="在这里粘贴小票文字……"
+          maxlength="-1"
+        />
+
+        <button class="primary-btn" bindtap="parseBatch">识别小票</button>
+      </view>
+
+      <view wx:if="{{previewMessage}}" class="message-card">{{previewMessage}}</view>
+
+      <view wx:for="{{previewOrders}}" wx:for-item="preview" wx:key="id" class="card">
+        <view class="section-title">识别结果 {{index + 1}}</view>
+
+        <view class="data-line"><text>老板</text><text>{{preview.boss}}</text></view>
+        <view class="data-line"><text>日期</text><text>{{preview.date}}</text></view>
+        <view class="data-line"><text>项目</text><text>{{preview.project}}</text></view>
+        <view class="data-line"><text>礼物</text><text>{{preview.gift}}</text></view>
+        <view class="data-line"><text>单价</text><text>{{preview.unitPrice}}</text></view>
+        <view class="data-line"><text>数量</text><text>{{preview.quantity}}</text></view>
+        <view class="data-line"><text>总额</text><text class="amount">¥{{preview.amount}}</text></view>
+        <view class="data-line"><text>场控</text><text>{{preview.stageManager}}</text></view>
+
+        <view class="sub-title">陪陪平均分配</view>
+        <view wx:for="{{preview.allocations}}" wx:for-item="allocation" wx:key="staffName" class="allocation-line">
+          <text>{{allocation.staffName}}</text>
+          <text>¥{{allocation.amount}}</text>
+        </view>
+
+        <view class="status-ok" wx:if="{{preview.valid}}">基本检查通过</view>
+        <view class="warning" wx:if="{{preview.warning}}">{{preview.warning}}</view>
+      </view>
+
+      <button wx:if="{{previewOrders.length > 0}}" class="primary-btn" bindtap="saveParsedOrders">确认并保存有效订单</button>
+
+      <view class="card">
+        <view class="section-title">已保存订单（{{orders.length}}）</view>
+        <view wx:if="{{orders.length === 0}}" class="empty">还没有订单记录。</view>
+
+        <view wx:for="{{orders}}" wx:for-item="order" wx:key="id" class="order-item">
+          <view class="order-top">
+            <text>{{order.project}}</text>
+            <text class="amount">¥{{order.amount}}</text>
+          </view>
+          <view class="hint">日期：{{order.date}}</view>
+          <view class="hint">老板：{{order.boss}}　场控：{{order.stageManager}}</view>
+          <view class="hint">陪陪：
+            <text wx:for="{{order.companions}}" wx:for-item="name" wx:key="*this">{{name}} </text>
+          </view>
+          <view wx:for="{{order.allocations}}" wx:for-item="allocation" wx:key="staffName" class="allocation-line">
+            <text>{{allocation.staffName}}</text>
+            <text>¥{{allocation.amount}}</text>
+          </view>
+          <button size="mini" class="delete-btn" data-id="{{order.id}}" bindtap="deleteOrder">删除订单</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'staff'}}">
+      <view class="card">
+        <view class="section-title">添加员工</view>
+
+        <view class="field-label">员工姓名</view>
+        <input class="text-input" value="{{staffName}}" data-field="staffName" bindinput="onInput" placeholder="例如：冷屿"/>
+
+        <view class="field-label">提成比例（%）</view>
+        <input class="text-input" type="digit" value="{{staffRate}}" data-field="staffRate" bindinput="onInput" placeholder="例如：30"/>
+
+        <view class="field-label">每月补贴（元）</view>
+        <input class="text-input" type="digit" value="{{staffAllowance}}" data-field="staffAllowance" bindinput="onInput" placeholder="0"/>
+
+        <view class="field-label">每月扣款（元）</view>
+        <input class="text-input" type="digit" value="{{staffDeduction}}" data-field="staffDeduction" bindinput="onInput" placeholder="0"/>
+
+        <button class="primary-btn" bindtap="addStaff">添加员工</button>
+      </view>
+
+      <view class="card">
+        <view class="section-title">员工名单（{{staff.length}}）</view>
+        <view wx:if="{{staff.length === 0}}" class="empty">请先添加员工。</view>
+
+        <view wx:for="{{staff}}" wx:for-item="person" wx:key="id" class="staff-item">
+          <view class="staff-info">
+            <view class="staff-name">{{person.name}}</view>
+            <view class="hint">提成 {{person.rate}}% · 补贴 ¥{{person.allowance}} · 扣款 ¥{{person.deduction}}</view>
+          </view>
+          <button size="mini" class="delete-btn" data-id="{{person.id}}" bindtap="deleteStaff">删除</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{tab === 'payroll'}}">
+      <view class="card">
+        <view class="section-title">月度工资结算</view>
+        <view class="field-label">结算月份（YYYY-MM）</view>
+        <input class="text-input" value="{{month}}" bindinput="onMonthInput" placeholder="例如：2026-10"/>
+
+        <view class="summary-cell">
+          <view class="summary-label">订单总额</view>
+          <view class="summary-value">¥{{payrollOrderTotal}}</view>
+        </view>
+        <view class="summary-cell">
+          <view class="summary-label">陪陪分配总额</view>
+          <view class="summary-value">¥{{payrollAllocationTotal}}</view>
+        </view>
+        <view class="summary-cell">
+          <view class="summary-label">提成合计</view>
+          <view class="summary-value">¥{{payrollCommissionTotal}}</view>
+        </view>
+        <view class="summary-cell">
+          <view class="summary-label">应发工资合计</view>
+          <view class="summary-value highlight">¥{{payrollPayableTotal}}</view>
+        </view>
+
+        <view class="hint">工资＝个人分配金额 × 提成比例 + 补贴 − 扣款。补贴和扣款按员工设置，每月最多各计一次。</view>
+      </view>
+
+      <view wx:for="{{payrollRows}}" wx:for-item="person" wx:key="id" class="card">
+        <view class="staff-name">{{person.name}}</view>
+        <view class="data-line"><text>参与分配次数</text><text>{{person.orderCount}}</text></view>
+        <view class="data-line"><text>分配金额</text><text>¥{{person.allocatedText}}</text></view>
+        <view class="data-line"><text>提成</text><text>¥{{person.commissionText}}</text></view>
+        <view class="data-line"><text>补贴</text><text>¥{{person.allowanceText}}</text></view>
+        <view class="data-line"><text>扣款</text><text>¥{{person.deductionText}}</text></view>
+        <view class="data-line"><text>应发工资</text><text class="amount">¥{{person.payableText}}</text></view>
+      </view>
+    </view>
+
+    <view class="footer">保存前请核对小票日期、金额和陪陪名单。</view>
+  </view>
+</scroll-view>
