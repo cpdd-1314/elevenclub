@@ -12,6 +12,6 @@
  * ------------------------------------------------------------ */
 
 var SUPABASE_CONFIG = {
-  supabaseUrl: 'https://YOUR-PROJECT.supabase.co',
-  supabaseAnonKey: 'YOUR-ANON-KEY'
+  supabaseUrl: 'https://latrfveekbmgjbtoydqg.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHJmdmVla2JtZ2pidG95ZHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODA2MTksImV4cCI6MjEwNzQ1NjYxOX0.A-_YJnSy28Zp5llePEnyk7gYTDe089OGiMUoLk4h0bY'
 };
