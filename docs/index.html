@@ -47,12 +47,6 @@
         <div id="previewMessage" class="message-card" hidden></div>
         <div id="previewList"></div>
         <button id="saveOrdersBtn" class="primary-btn" type="button" hidden>确认并保存有效订单</button>
-
-        <div class="card">
-          <div class="section-title">已保存订单（<span id="orderCount">0</span>）</div>
-          <div id="orderEmpty" class="empty">还没有订单记录。</div>
-          <div id="orderList"></div>
-        </div>
         </div>
 
         <!-- 方式二：快捷录单（预设点选） -->
@@ -107,6 +101,13 @@
           <div class="quick-preview" id="qPreview"></div>
           <button class="primary-btn" type="button" id="quickSubmitBtn">确认结单</button>
         </div>
+        </div>
+
+        <!-- 已保存订单：粘贴和快捷两种方式下都能看到 -->
+        <div class="card">
+          <div class="section-title">已保存订单（<span id="orderCount">0</span>）</div>
+          <div id="orderEmpty" class="empty">还没有订单记录。</div>
+          <div id="orderList"></div>
         </div>
       </section>
 
@@ -198,16 +199,6 @@
         </div>
       </div>
       <button class="primary-btn" type="button" id="selectPickerDone" hidden>完成</button>
-    </div>
-  </div>
-
-  <!-- 卡片操作菜单（⋯） -->
-  <div id="cardMenu" class="modal-mask picker-mask" hidden>
-    <div class="menu-sheet">
-      <div class="menu-title" id="cardMenuTitle">操作</div>
-      <button class="menu-item" type="button" id="cardMenuView">查看详情</button>
-      <button class="menu-item danger" type="button" id="cardMenuDelete">删除</button>
-      <button class="menu-item cancel" type="button" id="cardMenuCancel">取消</button>
     </div>
   </div>
 

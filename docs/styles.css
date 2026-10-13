@@ -753,50 +753,6 @@ body {
   margin-bottom: 12px;
 }
 
-/* ---------- 卡片 ⋯ 操作菜单 ---------- */
-.menu-sheet {
-  background: #fff;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 340px;
-  padding: 8px 0;
-  overflow: hidden;
-}
-
-.menu-title {
-  font-size: 13px;
-  color: #8a8199;
-  text-align: center;
-  padding: 10px 0 6px;
-}
-
-.menu-item {
-  display: block;
-  width: 100%;
-  border: none;
-  background: none;
-  padding: 14px 0;
-  font-size: 15px;
-  color: #3d3450;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: center;
-}
-
-.menu-item:hover {
-  background: #f7f4fb;
-}
-
-.menu-item.danger {
-  color: #b34b55;
-}
-
-.menu-item.cancel {
-  color: #8a8199;
-  font-size: 14px;
-  border-top: 1px solid #f1edf5;
-}
-
 /* ---------- 详情页（全屏，可返回） ---------- */
 .detail-page {
   position: fixed;

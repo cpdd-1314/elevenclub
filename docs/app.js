@@ -570,9 +570,8 @@
   function switchTab(tab) {
     state.tab = tab;
 
-    // 切标签时收起详情页和 ⋯ 菜单
+    // 切标签时收起详情页
     if (!$('detailPage').hidden) closeDetail();
-    if (!$('cardMenu').hidden) closeCardMenu();
 
     var tabs = document.querySelectorAll('.tab');
     tabs.forEach(function (btn) {
@@ -909,55 +908,9 @@
     });
   }
 
-  /* ================= 卡片 ⋯ 菜单与详情页 ================= */
+  /* ================= 卡片 ⋯ 按钮与详情页 ================= */
 
-  var cardMenu = { type: null, id: null, name: null };
   var detailState = { type: null, id: null, name: null };
-
-  function openCardMenu(type, id, name) {
-    cardMenu = { type: type, id: id, name: name || '' };
-
-    var viewBtn = $('cardMenuView');
-    var delBtn = $('cardMenuDelete');
-
-    if (type === 'order') {
-      $('cardMenuTitle').textContent = '订单操作';
-      viewBtn.textContent = '查看订单详情';
-      delBtn.textContent = '删除订单';
-      delBtn.hidden = false;
-    } else if (type === 'staff') {
-      $('cardMenuTitle').textContent = '陪陪操作';
-      viewBtn.textContent = '查看陪陪详情';
-      delBtn.textContent = '删除陪陪';
-      delBtn.hidden = false;
-    } else {
-      $('cardMenuTitle').textContent = '工资操作';
-      viewBtn.textContent = '查看工资明细';
-      delBtn.hidden = true;
-    }
-
-    $('cardMenu').hidden = false;
-  }
-
-  function closeCardMenu() {
-    $('cardMenu').hidden = true;
-    cardMenu = { type: null, id: null, name: null };
-  }
-
-  /* 菜单动作：查看详情 → 跳详情页；删除 → 走原删除流程 */
-  function cardMenuAct(action) {
-    var type = cardMenu.type;
-    var id = cardMenu.id;
-    var name = cardMenu.name;
-    closeCardMenu();
-
-    if (action === 'view') {
-      openDetail(type, id, name);
-    } else if (action === 'delete') {
-      if (type === 'order') deleteOrder(id);
-      else if (type === 'staff') deleteStaff(id);
-    }
-  }
 
   function openDetail(type, id, name) {
     detailState = { type: type, id: id, name: name || '' };
@@ -1246,11 +1199,9 @@
         '<div class="list-card-top"><span class="list-card-title">' +
         escapeHtml(order.project || '未填项目') + '</span>' +
         '<span class="amount">¥' + escapeHtml(money(order.amount)) + '</span></div>' +
-        '<div class="hint">' + escapeHtml(order.date) + ' · ' + escapeHtml(order.boss) +
-        ' · ' + order.companions.length + ' 人</div>' +
         '</div>' +
-        '<button type="button" class="more-btn" data-action="card-menu" data-type="order"' +
-        ' data-id="' + escapeHtml(order.id) + '" title="更多操作">⋯</button>' +
+        '<button type="button" class="more-btn" data-action="card-view" data-type="order"' +
+        ' data-id="' + escapeHtml(order.id) + '" title="查看详情">⋯</button>' +
         '</div>';
     }).join('');
   }
@@ -1265,12 +1216,9 @@
         '<div class="list-card-main">' +
         '<div class="list-card-top"><span class="list-card-title">' +
         escapeHtml(person.name) + '</span></div>' +
-        '<div class="hint">提成 ' + escapeHtml(person.rate) + '% · 补贴 ¥' +
-        escapeHtml(money(person.allowance)) + ' · 扣款 ¥' +
-        escapeHtml(money(person.deduction)) + '</div>' +
         '</div>' +
-        '<button type="button" class="more-btn" data-action="card-menu" data-type="staff"' +
-        ' data-id="' + escapeHtml(person.id) + '" title="更多操作">⋯</button>' +
+        '<button type="button" class="more-btn" data-action="card-view" data-type="staff"' +
+        ' data-id="' + escapeHtml(person.id) + '" title="查看详情">⋯</button>' +
         '</div>';
     }).join('');
   }
@@ -1290,12 +1238,9 @@
         '<div class="list-card-top"><span class="list-card-title">' +
         escapeHtml(person.name) + '</span>' +
         '<span class="amount">¥' + escapeHtml(person.payableText) + '</span></div>' +
-        '<div class="hint">' + escapeHtml(state.month) + ' · 参与 ' +
-        escapeHtml(person.orderCount) + ' 次 · 提成 ¥' +
-        escapeHtml(person.commissionText) + '</div>' +
         '</div>' +
-        '<button type="button" class="more-btn" data-action="card-menu" data-type="payroll"' +
-        ' data-name="' + escapeHtml(person.name) + '" title="更多操作">⋯</button>' +
+        '<button type="button" class="more-btn" data-action="card-view" data-type="payroll"' +
+        ' data-name="' + escapeHtml(person.name) + '" title="查看工资明细">⋯</button>' +
         '</div>';
     }).join('');
   }
@@ -1678,30 +1623,17 @@
       renderPayrollPanel();
     });
 
-    // 卡片 ⋯ 菜单
-    $('cardMenuView').addEventListener('click', function () {
-      cardMenuAct('view');
-    });
-    $('cardMenuDelete').addEventListener('click', function () {
-      cardMenuAct('delete');
-    });
-    $('cardMenuCancel').addEventListener('click', closeCardMenu);
-    $('cardMenu').addEventListener('click', function (e) {
-      if (e.target === this) closeCardMenu();
-    });
-
     // 详情页返回
     $('detailBack').addEventListener('click', closeDetail);
 
-    // Esc 关闭弹层（选择器/卡片菜单/详情页）
+    // Esc 关闭弹层（详情页/选择器）
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (!$('detailPage').hidden) { closeDetail(); return; }
-      if (!$('cardMenu').hidden) { closeCardMenu(); return; }
       if (!$('selectPicker').hidden) { closeSelectPicker(); return; }
     });
 
-    // 列表按钮事件委托：⋯ 菜单 / 详情页内删除
+    // 列表按钮事件委托：⋯ 直达详情页 / 详情页内删除
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
@@ -1709,8 +1641,8 @@
       var action = btn.dataset.action;
       var id = btn.dataset.id;
 
-      if (action === 'card-menu') {
-        openCardMenu(btn.dataset.type, id, btn.dataset.name);
+      if (action === 'card-view') {
+        openDetail(btn.dataset.type, id, btn.dataset.name);
       } else if (action === 'delete-order') {
         deleteOrder(id);
       } else if (action === 'delete-staff') {
