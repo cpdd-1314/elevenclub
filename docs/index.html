@@ -59,42 +59,40 @@
         <div id="mode-quick" hidden>
         <div class="card">
           <div class="section-title">快捷录单</div>
-          <div class="hint">常用信息点一下就能选，不用每次写小票。点「＋ 添加」可以从历史订单里选已有的值，也可以手动输入新的。想粘贴识别就点上方「粘贴小票」切换。</div>
+          <div class="hint">常用信息不用每次写：点每项后面的区域弹出全部选项，点一下就选中；陪陪可以多选。想粘贴识别就点上方「粘贴小票」切换。</div>
 
           <div class="field-label">日期</div>
           <input class="text-input" id="qDate" type="date">
 
           <div class="field-label">老板</div>
-          <div class="chips" id="bossChips"></div>
-          <div class="chip-add">
-            <input class="text-input" id="bossInput" type="text" placeholder="输入老板名字">
-            <button class="mini-add-btn" id="bossAdd" type="button">＋ 添加</button>
-          </div>
+          <button class="select-field" type="button" id="bossSelect" data-group="bosses">
+            <span class="select-field-text" id="bossSelectText">请选择老板</span>
+            <span class="select-field-arrow">▾</span>
+          </button>
 
           <div class="field-label">项目</div>
-          <div class="chips" id="projectChips"></div>
-          <div class="chip-add">
-            <input class="text-input" id="projectInput" type="text" placeholder="例如：线上陪玩">
-            <button class="mini-add-btn" id="projectAdd" type="button">＋ 添加</button>
-          </div>
+          <button class="select-field" type="button" id="projectSelect" data-group="projects">
+            <span class="select-field-text" id="projectSelectText">请选择项目</span>
+            <span class="select-field-arrow">▾</span>
+          </button>
 
-          <div class="field-label">陪陪（点选，可多选）</div>
-          <div class="chips" id="qStaffChips"></div>
-          <div class="chips-empty" id="qStaffEmpty" hidden>请先在「员工管理」添加陪陪。</div>
+          <div class="field-label">陪陪（可多选）</div>
+          <button class="select-field" type="button" id="staffSelect">
+            <span class="select-field-text" id="staffSelectText">请选择陪陪</span>
+            <span class="select-field-arrow">▾</span>
+          </button>
 
           <div class="field-label">场控</div>
-          <div class="chips" id="stageManagerChips"></div>
-          <div class="chip-add">
-            <input class="text-input" id="stageManagerInput" type="text" placeholder="输入场控名字">
-            <button class="mini-add-btn" id="stageManagerAdd" type="button">＋ 添加</button>
-          </div>
+          <button class="select-field" type="button" id="stageManagerSelect" data-group="stageManagers">
+            <span class="select-field-text" id="stageManagerSelectText">请选择场控</span>
+            <span class="select-field-arrow">▾</span>
+          </button>
 
           <div class="field-label">礼物</div>
-          <div class="chips" id="giftChips"></div>
-          <div class="chip-add">
-            <input class="text-input" id="giftInput" type="text" placeholder="例如：奶茶">
-            <button class="mini-add-btn" id="giftAdd" type="button">＋ 添加</button>
-          </div>
+          <button class="select-field" type="button" id="giftSelect" data-group="gifts">
+            <span class="select-field-text" id="giftSelectText">请选择礼物</span>
+            <span class="select-field-arrow">▾</span>
+          </button>
 
           <div class="field-label">单价（元）</div>
           <input class="text-input" id="qUnitPrice" type="number" min="0" step="0.01" placeholder="0.00">
@@ -184,22 +182,22 @@
     </div>
   </div>
 
-  <!-- 预设选择器：从历史订单选已有值 -->
-  <div id="presetPicker" class="modal-mask picker-mask" hidden>
+  <!-- 选项选择器：按一下弹出全部选项，点一下选中 -->
+  <div id="selectPicker" class="modal-mask picker-mask" hidden>
     <div class="picker-sheet" role="dialog" aria-modal="true">
       <div class="picker-head">
-        <span class="picker-title" id="pickerTitle">添加预设</span>
-        <button type="button" class="picker-close" id="pickerClose" title="关闭">×</button>
+        <span class="picker-title" id="selectPickerTitle">选择</span>
+        <button type="button" class="picker-close" id="selectPickerClose" title="关闭">×</button>
       </div>
-      <div class="picker-body" id="pickerList"></div>
+      <div class="picker-body" id="selectPickerList"></div>
       <div class="picker-manual">
         <div class="field-label">列表没有？手动输入新的</div>
         <div class="chip-add">
-          <input class="text-input" id="pickerInput" type="text" placeholder="输入新名称后点「添加」">
-          <button class="mini-add-btn" id="pickerInputAdd" type="button">添加</button>
+          <input class="text-input" id="selectPickerInput" type="text" placeholder="输入新名称后点「添加」">
+          <button class="mini-add-btn" id="selectPickerInputAdd" type="button">添加</button>
         </div>
       </div>
-      <button class="primary-btn" type="button" id="pickerConfirm">确定添加（0）</button>
+      <button class="primary-btn" type="button" id="selectPickerDone" hidden>完成</button>
     </div>
   </div>
 

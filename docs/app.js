@@ -604,8 +604,9 @@
     $('mode-paste').hidden = isQuick;
     $('mode-quick').hidden = !isQuick;
 
-    // 离开快捷模式时收起预设选择器
-    if (!isQuick && pickerState.group) closePresetPicker();
+    // 离开快捷模式时收起选项选择器
+    if (!isQuick && selectPicker.group) closeSelectPicker();
+    if (!isQuick && selectPicker.multi) closeSelectPicker();
 
     if (isQuick) {
       renderQuickPanel();
@@ -621,26 +622,27 @@
     { key: 'gifts', label: '礼物', field: 'gift' }
   ];
 
-  /* 渲染一组预设 chips：点选填入表单，× 删除预设 */
-  function renderChipGroup(group) {
-    var values = state.presets[group.key] || [];
-    var current = quickForm[group.field];
-    var html = '';
+  /* 更新一组选择按钮的显示文本 */
+  function renderSelectField(group) {
+    var el = $(group.field + 'SelectText');
+    var value = quickForm[group.field];
+    el.textContent = value || '请选择' + group.label;
+    el.classList.toggle('placeholder', !value);
+  }
 
-    if (values.length === 0) {
-      html = '<div class="chips-empty">还没有预设，点下方「＋ 添加」从历史订单里选</div>';
+  function renderStaffSelect() {
+    var el = $('staffSelectText');
+    var names = quickForm.staffNames;
+    if (names.length === 0) {
+      el.textContent = '请选择陪陪';
+      el.classList.add('placeholder');
+    } else if (names.length <= 2) {
+      el.textContent = names.join('、');
+      el.classList.remove('placeholder');
     } else {
-      html = values.map(function (value) {
-        var active = value === current ? ' active' : '';
-        return '<span class="chip' + active + '" data-field="' + group.field +
-          '" data-value="' + escapeHtml(value) + '">' +
-          escapeHtml(value) +
-          '<button type="button" class="chip-del" data-group="' + group.key +
-          '" data-value="' + escapeHtml(value) + '" title="删除预设">×</button></span>';
-      }).join('');
+      el.textContent = names.slice(0, 2).join('、') + ' 等 ' + names.length + ' 人';
+      el.classList.remove('placeholder');
     }
-
-    return html;
   }
 
   function renderQuickPanel() {
@@ -650,19 +652,8 @@
     $('qQuantity').value = quickForm.quantity;
     $('qAmount').value = quickForm.amount;
 
-    PRESET_GROUPS.forEach(function (group) {
-      $(group.field + 'Chips').innerHTML = renderChipGroup(group);
-      $(group.field + 'Input').value = quickForm[group.field];
-    });
-
-    // 陪陪（复用员工列表，多选）
-    var staffChips = $('qStaffChips');
-    $('qStaffEmpty').hidden = state.staff.length > 0;
-    staffChips.innerHTML = state.staff.map(function (person) {
-      var active = quickForm.staffNames.indexOf(person.name) !== -1 ? ' active' : '';
-      return '<span class="chip staff-chip' + active + '" data-staff="' +
-        escapeHtml(person.name) + '">' + escapeHtml(person.name) + '</span>';
-    }).join('');
+    PRESET_GROUPS.forEach(renderSelectField);
+    renderStaffSelect();
 
     renderQuickPreview();
   }
@@ -690,17 +681,12 @@
     var allocations = splitAmount(quickForm.staffNames, total);
     var html = '<div class="quick-preview-title">将生成订单 · ' +
       escapeHtml(quickForm.boss) + ' · ' + escapeHtml(quickForm.project || '未填项目') +
-      ' · ' + quickForm.staffNames.length + ' 人</div>';
+      ' · ' + quickForm.staffNames.length + ' 人 · 总额 ¥' + money(total) + '</div>';
     allocations.forEach(function (a) {
       html += '<div class="allocation-line"><span>' + escapeHtml(a.staffName) +
-        '</span><span>¥' + escapeHtml(a.amount) + '</span></div>';
+        '</span><span>¥' + escapeHtml(money(a.amount)) + '</span></div>';
     });
     box.innerHTML = html;
-  }
-
-  function quickOnFieldInput(field, value) {
-    quickForm[field] = value;
-    renderQuickPreview();
   }
 
   /* 批量添加预设（去重，最多保留 30 个，一次保存） */
@@ -726,24 +712,20 @@
     });
   }
 
-  function quickAddPreset(groupKey, value) {
-    return quickAddPresets(groupKey, [value]);
-  }
-
   function quickRemovePreset(groupKey, value) {
     var list = (state.presets[groupKey] || []).filter(function (item) {
       return item !== value;
     });
     state.presets[groupKey] = list;
 
-    saveAll(state.staff, state.orders, state.presets).then(function () {
+    return saveAll(state.staff, state.orders, state.presets).then(function () {
       renderQuickPanel();
     });
   }
 
-  /* ================= 预设选择器：从历史订单选已有值 ================= */
+  /* ================= 选项选择器：按一下弹出全部，点一下选中 ================= */
 
-  var pickerState = { group: null, selected: [] };
+  var selectPicker = { group: null, multi: false };
 
   /* 从历史订单收集某组的候选值：去重、去空，已是预设的标记出来 */
   function collectCandidates(groupKey) {
@@ -765,83 +747,161 @@
     });
   }
 
-  function openPresetPicker(groupKey) {
+  function openSelectPicker(groupKey) {
     var group = PRESET_GROUPS.filter(function (g) { return g.key === groupKey; })[0];
     if (!group) return;
 
-    pickerState.group = group;
-    pickerState.selected = [];
-    $('pickerTitle').textContent = '添加' + group.label + '预设';
-    // 手动输入框预填顶部输入框里已打的内容，省得重复打字
-    $('pickerInput').value = quickForm[group.field] || '';
-    renderPresetPicker();
-    $('presetPicker').hidden = false;
+    selectPicker.group = group;
+    selectPicker.multi = false;
+    $('selectPickerTitle').textContent = '选择' + group.label;
+    $('selectPickerDone').hidden = true;
+    $('selectPickerInput').value = '';
+    renderSelectPicker();
+    $('selectPicker').hidden = false;
   }
 
-  function closePresetPicker() {
-    $('presetPicker').hidden = true;
-    pickerState.group = null;
-    pickerState.selected = [];
+  function openStaffPicker() {
+    selectPicker.group = null;
+    selectPicker.multi = true;
+    $('selectPickerTitle').textContent = '选择陪陪';
+    $('selectPickerInput').value = '';
+    renderSelectPicker();
+    updateStaffDoneText();
+    $('selectPicker').hidden = false;
   }
 
-  function renderPresetPicker() {
-    var group = pickerState.group;
-    if (!group) return;
+  function closeSelectPicker() {
+    $('selectPicker').hidden = true;
+    selectPicker.group = null;
+    selectPicker.multi = false;
+  }
 
-    var candidates = collectCandidates(group.key);
+  function updateStaffDoneText() {
+    $('selectPickerDone').textContent = '完成（已选 ' + quickForm.staffNames.length + ' 人）';
+  }
+
+  /* 一行选项：✓ 表示已选，＋ 表示来自历史待添加，× 删除预设 */
+  function selectRowHtml(value, opts) {
+    opts = opts || {};
+    var cls = 'select-row';
+    if (opts.active) cls += ' active';
+    if (opts.add) cls += ' add-row';
+
+    var mark = opts.add ? '＋' : '✓';
+    var html = '<div class="' + cls + '" data-value="' + escapeHtml(value) + '">' +
+      '<span class="select-row-mark">' + mark + '</span>' +
+      '<span class="select-row-text">' + escapeHtml(value) + '</span>';
+    if (opts.deletable) {
+      html += '<button type="button" class="select-row-del" data-value="' +
+        escapeHtml(value) + '" title="删除这个预设">×</button>';
+    }
+    return html + '</div>';
+  }
+
+  function renderSelectPicker() {
     var html = '';
+    var manual = $('selectPickerList').parentElement.querySelector('.picker-manual');
+    var doneBtn = $('selectPickerDone');
 
-    if (candidates.length === 0) {
-      html = '<div class="picker-empty">历史订单里还没有' + escapeHtml(group.label) +
-        '记录，结几单后这里就能直接选；也可以在下方手动输入新的。</div>';
+    if (selectPicker.multi) {
+      // 陪陪多选
+      manual.hidden = true;
+      if (state.staff.length === 0) {
+        html = '<div class="picker-empty">还没有陪陪，请先到「员工管理」页添加。</div>';
+        doneBtn.hidden = true;
+      } else {
+        doneBtn.hidden = false;
+        html = '<div class="picker-tip">点一下选择，可多选，选完点「完成」：</div>' +
+          state.staff.map(function (person) {
+            var active = quickForm.staffNames.indexOf(person.name) !== -1;
+            return '<div class="select-row' + (active ? ' active' : '') +
+              '" data-staff="' + escapeHtml(person.name) + '">' +
+              '<span class="select-row-mark">✓</span>' +
+              '<span class="select-row-text">' + escapeHtml(person.name) + '</span></div>';
+          }).join('');
+      }
     } else {
-      html = '<div class="picker-tip">点一下选中，可多选，选完点底部按钮添加：</div>' +
-        candidates.map(function (item) {
-          if (item.added) {
-            return '<span class="picker-item added">' + escapeHtml(item.value) +
-              '<span class="picker-flag">已添加</span></span>';
-          }
-          var selected = pickerState.selected.indexOf(item.value) !== -1 ? ' selected' : '';
-          return '<span class="picker-item' + selected + '" data-value="' +
-            escapeHtml(item.value) + '">' + escapeHtml(item.value) + '</span>';
+      manual.hidden = false;
+      doneBtn.hidden = true;
+
+      var group = selectPicker.group;
+      if (!group) return;
+      var presets = state.presets[group.key] || [];
+
+      if (presets.length > 0) {
+        html += '<div class="picker-tip">点一下选择：</div>' + presets.map(function (value) {
+          return selectRowHtml(value, {
+            active: quickForm[group.field] === value,
+            deletable: true
+          });
         }).join('');
+      }
+
+      // 历史订单里出现过、但还没加为预设的值
+      var candidates = collectCandidates(group.key).filter(function (c) {
+        return !c.added;
+      });
+      if (candidates.length > 0) {
+        html += '<div class="picker-subtitle">从历史订单添加</div>' +
+          candidates.map(function (c) {
+            return selectRowHtml(c.value, { add: true });
+          }).join('');
+      }
+
+      if (presets.length === 0 && candidates.length === 0) {
+        html = '<div class="picker-empty">还没有' + escapeHtml(group.label) +
+          '可选，在下方手动输入，添加后这里就能直接选。</div>';
+      }
     }
 
-    $('pickerList').innerHTML = html;
-    $('pickerConfirm').textContent = '确定添加（' + pickerState.selected.length + '）';
-    $('pickerConfirm').disabled = pickerState.selected.length === 0;
+    $('selectPickerList').innerHTML = html;
   }
 
-  function togglePickerItem(value) {
-    var idx = pickerState.selected.indexOf(value);
-    if (idx === -1) {
-      pickerState.selected.push(value);
-    } else {
-      pickerState.selected.splice(idx, 1);
-    }
-    renderPresetPicker();
+  /* 单选组：选中某项 */
+  function selectPresetValue(value) {
+    var group = selectPicker.group;
+    if (!group) return;
+    quickForm[group.field] = value;
+    renderQuickPanel();
+    closeSelectPicker();
   }
 
-  function pickerConfirmAdd() {
-    if (!pickerState.group || pickerState.selected.length === 0) return;
-    var group = pickerState.group;
-    var values = pickerState.selected.slice();
-
-    quickAddPresets(group.key, values).then(function (added) {
-      closePresetPicker();
-      if (added) showToast('已添加 ' + values.length + ' 个' + group.label + '预设');
+  /* 历史候选：先添加为预设，再选中 */
+  function selectCandidateValue(value) {
+    var group = selectPicker.group;
+    if (!group) return;
+    quickAddPresets(group.key, [value]).then(function () {
+      quickForm[group.field] = value;
+      renderQuickPanel();
+      closeSelectPicker();
+      showToast('已选择「' + value + '」');
     });
   }
 
-  function pickerManualAdd() {
-    if (!pickerState.group) return;
-    var v = $('pickerInput').value.trim();
+  function toggleStaffInPicker(name) {
+    var idx = quickForm.staffNames.indexOf(name);
+    if (idx === -1) {
+      quickForm.staffNames.push(name);
+    } else {
+      quickForm.staffNames.splice(idx, 1);
+    }
+    renderQuickPanel();
+    renderSelectPicker();
+    updateStaffDoneText();
+  }
+
+  /* 手动输入：添加为预设并直接选中 */
+  function selectPickerManualAdd() {
+    if (!selectPicker.group) return;
+    var v = $('selectPickerInput').value.trim();
     if (!v) { showToast('请输入名称'); return; }
 
-    quickAddPresets(pickerState.group.key, [v]).then(function (added) {
-      $('pickerInput').value = '';
-      renderPresetPicker();
-      if (added) showToast('已添加「' + v + '」');
+    quickAddPresets(selectPicker.group.key, [v]).then(function (added) {
+      $('selectPickerInput').value = '';
+      quickForm[selectPicker.group.field] = v;
+      renderQuickPanel();
+      closeSelectPicker();
+      showToast(added ? '已添加并选择「' + v + '」' : '已选择「' + v + '」');
     });
   }
 
@@ -981,7 +1041,7 @@
     list.innerHTML = state.orders.map(function (order) {
       var html = '<div class="order-item">' +
         '<div class="order-top"><span>' + escapeHtml(order.project) + '</span>' +
-        '<span class="amount">¥' + escapeHtml(order.amount) + '</span></div>' +
+        '<span class="amount">¥' + escapeHtml(money(order.amount)) + '</span></div>' +
         '<div class="hint">日期：' + escapeHtml(order.date) + '</div>' +
         '<div class="hint">老板：' + escapeHtml(order.boss) + '　场控：' + escapeHtml(order.stageManager || '—') + '</div>' +
         '<div class="hint">陪陪：' + order.companions.map(escapeHtml).join(' ') + '</div>';
@@ -989,7 +1049,7 @@
       order.allocations.forEach(function (allocation) {
         html += '<div class="allocation-line">' +
           '<span>' + escapeHtml(allocation.staffName) + '</span>' +
-          '<span>¥' + escapeHtml(allocation.amount) + '</span></div>';
+          '<span>¥' + escapeHtml(money(allocation.amount)) + '</span></div>';
       });
 
       html += '<button class="delete-btn" type="button" data-action="delete-order" data-id="' + escapeHtml(order.id) + '">删除订单</button>';
@@ -1356,69 +1416,55 @@
       renderQuickPreview();
     });
 
-    // 预设字段输入
+    // 选择按钮：老板 / 项目 / 场控 / 礼物 → 弹出选项
     PRESET_GROUPS.forEach(function (group) {
-      $(group.field + 'Input').addEventListener('input', function (e) {
-        quickOnFieldInput(group.field, e.target.value);
-      });
-      $(group.field + 'Input').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          openPresetPicker(group.key);
-        }
-      });
-      // 「＋ 添加」打开选择器：从历史订单选已有值，也可手动输入
-      $(group.field + 'Add').addEventListener('click', function () {
-        openPresetPicker(group.key);
+      $(group.field + 'Select').addEventListener('click', function () {
+        openSelectPicker(group.key);
       });
     });
+    // 陪陪选择按钮 → 弹多选
+    $('staffSelect').addEventListener('click', openStaffPicker);
 
-    // 预设选择器
-    $('pickerClose').addEventListener('click', closePresetPicker);
-    $('presetPicker').addEventListener('click', function (e) {
-      if (e.target === this) closePresetPicker();
+    // 选项选择器
+    $('selectPickerClose').addEventListener('click', closeSelectPicker);
+    $('selectPicker').addEventListener('click', function (e) {
+      if (e.target === this) closeSelectPicker();
     });
-    $('pickerConfirm').addEventListener('click', pickerConfirmAdd);
-    $('pickerInputAdd').addEventListener('click', pickerManualAdd);
-    $('pickerInput').addEventListener('keydown', function (e) {
+    $('selectPickerDone').addEventListener('click', closeSelectPicker);
+    $('selectPickerInputAdd').addEventListener('click', selectPickerManualAdd);
+    $('selectPickerInput').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        pickerManualAdd();
+        selectPickerManualAdd();
       }
     });
-    $('pickerList').addEventListener('click', function (e) {
-      var item = e.target.closest('.picker-item');
-      if (!item || item.classList.contains('added')) return;
-      togglePickerItem(item.dataset.value);
-    });
-
-    // 预设 chips：点选填入 / 删除预设；陪陪 chips：多选切换
-    document.addEventListener('click', function (e) {
-      var del = e.target.closest('.chip-del');
+    $('selectPickerList').addEventListener('click', function (e) {
+      // 行内删除预设
+      var del = e.target.closest('.select-row-del');
       if (del) {
         e.stopPropagation();
-        quickRemovePreset(del.dataset.group, del.dataset.value);
-        return;
-      }
-
-      var chip = e.target.closest('.chip');
-      if (!chip) return;
-
-      if (chip.dataset.staff !== undefined) {
-        var name = chip.dataset.staff;
-        var idx = quickForm.staffNames.indexOf(name);
-        if (idx === -1) {
-          quickForm.staffNames.push(name);
-        } else {
-          quickForm.staffNames.splice(idx, 1);
+        if (selectPicker.group) {
+          quickRemovePreset(selectPicker.group.key, del.dataset.value).then(function () {
+            renderSelectPicker();
+          });
         }
-        renderQuickPanel();
         return;
       }
 
-      if (chip.dataset.field !== undefined) {
-        quickForm[chip.dataset.field] = chip.dataset.value;
-        renderQuickPanel();
+      var row = e.target.closest('.select-row');
+      if (!row) return;
+
+      // 陪陪多选
+      if (selectPicker.multi) {
+        if (row.dataset.staff !== undefined) toggleStaffInPicker(row.dataset.staff);
+        return;
+      }
+
+      // 历史候选：添加并选中；预设：直接选中
+      if (row.classList.contains('add-row')) {
+        selectCandidateValue(row.dataset.value);
+      } else {
+        selectPresetValue(row.dataset.value);
       }
     });
 

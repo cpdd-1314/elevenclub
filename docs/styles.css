@@ -367,71 +367,51 @@ body {
   box-shadow: 0 1px 4px rgba(118, 81, 168, 0.3);
 }
 
-/* ---------- 快捷录单：预设点选 chips ---------- */
-.chips {
+/* ---------- 快捷录单：选择按钮 ---------- */
+.select-field {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   margin-top: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1.5px solid #e4dcf0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #3d3450;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.chips-empty {
-  color: #958a9f;
+.select-field:hover {
+  border-color: #c9b6e3;
+  background: #fbf9fd;
+}
+
+.select-field:active {
+  background: #f6f1fb;
+}
+
+.select-field-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-field-text.placeholder {
+  color: #a89fb5;
+}
+
+.select-field-arrow {
+  color: #9d8fb5;
   font-size: 12px;
-  margin-top: 8px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #f1edf5;
-  color: #5c5468;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  user-select: none;
-  border: 1px solid transparent;
-  transition: background 0.15s, color 0.15s;
-}
-
-.chip:hover {
-  background: #e6dff0;
-}
-
-.chip.active {
-  background: #7651a8;
-  color: #fff;
-}
-
-.chip.staff-chip.active {
-  background: #248354;
-}
-
-.chip-del {
-  border: none;
-  background: rgba(0, 0, 0, 0.12);
-  color: inherit;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.chip.active .chip-del {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.chip-del:hover {
-  background: #b34b55;
-  color: #fff;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .chip-add {
@@ -624,38 +604,100 @@ body {
   text-align: center;
 }
 
-.picker-item {
-  display: inline-flex;
+.picker-item,
+.select-row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0 8px 10px 0;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #f4f0f8;
-  border: 1.5px solid #e4dcf0;
-  color: #4c4364;
-  font-size: 14px;
+  gap: 10px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: #f7f4fb;
+  border: 1.5px solid #e9e2f2;
+  color: #3d3450;
+  font-size: 15px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  margin-bottom: 8px;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.picker-item.selected {
+.select-row:active {
+  background: #efe9f7;
+}
+
+.select-row.active {
   background: #7651a8;
   border-color: #7651a8;
   color: #fff;
 }
 
-.picker-item.added {
-  background: #eef6f0;
-  border-color: #cfe6d8;
-  color: #248354;
-  cursor: default;
+.select-row.add-row {
+  background: #fff;
+  border-style: dashed;
+  color: #5f4287;
 }
 
-.picker-flag {
-  font-size: 11px;
-  opacity: 0.75;
+.select-row-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  background: rgba(118, 81, 168, 0.12);
+  color: #7651a8;
+}
+
+.select-row.active .select-row-mark {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.select-row.add-row .select-row-mark {
+  background: #eee3fa;
+}
+
+.select-row-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-row-del {
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: #8a8199;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.select-row-del:hover {
+  background: #b34b55;
+  color: #fff;
+}
+
+.select-row.active .select-row-del {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.picker-subtitle {
+  font-size: 12px;
+  color: #8a8199;
+  margin: 14px 0 8px;
 }
 
 .picker-manual {
