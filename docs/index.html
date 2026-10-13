@@ -20,6 +20,7 @@
 
       <nav class="tabs" id="tabs">
         <button class="tab active" type="button" data-tab="orders">批量结单</button>
+        <button class="tab" type="button" data-tab="quick">快捷录单</button>
         <button class="tab" type="button" data-tab="staff">员工管理</button>
         <button class="tab" type="button" data-tab="payroll">工资统计</button>
       </nav>
@@ -45,6 +46,62 @@
           <div class="section-title">已保存订单（<span id="orderCount">0</span>）</div>
           <div id="orderEmpty" class="empty">还没有订单记录。</div>
           <div id="orderList"></div>
+        </div>
+      </section>
+
+      <!-- 快捷录单 -->
+      <section id="panel-quick" class="tab-panel" hidden>
+        <div class="card">
+          <div class="section-title">快捷录单</div>
+          <div class="hint">常用信息点一下就能选，不用每次写小票。输入新值后点「添加」会记住，下次直接点。保留「批量结单」页可继续粘贴识别。</div>
+
+          <div class="field-label">日期</div>
+          <input class="text-input" id="qDate" type="date">
+
+          <div class="field-label">老板</div>
+          <div class="chips" id="bossChips"></div>
+          <div class="chip-add">
+            <input class="text-input" id="bossInput" type="text" placeholder="输入老板名字">
+            <button class="mini-add-btn" id="bossAdd" type="button">添加</button>
+          </div>
+
+          <div class="field-label">项目</div>
+          <div class="chips" id="projectChips"></div>
+          <div class="chip-add">
+            <input class="text-input" id="projectInput" type="text" placeholder="例如：线上陪玩">
+            <button class="mini-add-btn" id="projectAdd" type="button">添加</button>
+          </div>
+
+          <div class="field-label">陪陪（点选，可多选）</div>
+          <div class="chips" id="qStaffChips"></div>
+          <div class="chips-empty" id="qStaffEmpty" hidden>请先在「员工管理」添加陪陪。</div>
+
+          <div class="field-label">场控</div>
+          <div class="chips" id="stageManagerChips"></div>
+          <div class="chip-add">
+            <input class="text-input" id="stageManagerInput" type="text" placeholder="输入场控名字">
+            <button class="mini-add-btn" id="stageManagerAdd" type="button">添加</button>
+          </div>
+
+          <div class="field-label">礼物</div>
+          <div class="chips" id="giftChips"></div>
+          <div class="chip-add">
+            <input class="text-input" id="giftInput" type="text" placeholder="例如：奶茶">
+            <button class="mini-add-btn" id="giftAdd" type="button">添加</button>
+          </div>
+
+          <div class="field-label">单价（元）</div>
+          <input class="text-input" id="qUnitPrice" type="number" min="0" step="0.01" placeholder="0.00">
+
+          <div class="field-label">数量</div>
+          <input class="text-input" id="qQuantity" type="number" min="1" step="1" value="1">
+
+          <div class="field-label">总额（元）</div>
+          <input class="text-input" id="qAmount" type="number" min="0" step="0.01" placeholder="默认 = 单价 × 数量">
+          <div class="hint">总额默认按单价 × 数量自动计算，手动修改后以你填的为准。</div>
+
+          <div class="quick-preview" id="qPreview"></div>
+          <button class="primary-btn" type="button" id="quickSubmitBtn">确认结单</button>
         </div>
       </section>
 

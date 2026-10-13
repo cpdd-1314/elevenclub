@@ -105,6 +105,21 @@
     });
   }
 
+  /* 订单指纹：与 parseReceipt 保持一致，快捷录单复用同一算法以保证查重有效 */
+  function buildFingerprint(date, boss, companions, project, gift, unitPrice, quantity, amount, stageManager) {
+    return [
+      date,
+      boss,
+      companions.slice().sort().join(','),
+      project,
+      gift,
+      money(unitPrice),
+      String(quantity),
+      money(amount),
+      stageManager
+    ].join('|');
+  }
+
   function parseReceipt(text) {
     var boss = getField(text, '老板');
     var companions = parseCompanions(getField(text, '陪陪'));
@@ -145,17 +160,12 @@
       warnings.push('总额与金额乘数量不一致，请核对');
     }
 
-    var fingerprint = [
-      date,
-      boss,
-      companions.slice().sort().join(','),
-      project,
-      gift,
-      unitPrice === null ? '' : money(unitPrice),
-      quantity === null ? '' : String(quantity),
-      money(amount),
-      stageManager
-    ].join('|');
+    var fingerprint = buildFingerprint(
+      date, boss, companions, project, gift,
+      unitPrice === null ? 0 : unitPrice,
+      quantity === null ? 0 : quantity,
+      amount, stageManager
+    );
 
     var valid =
       !!boss &&
@@ -251,6 +261,9 @@
 
   var STAFF_KEY = 'clubPayrollStaff_v1';
   var ORDER_KEY = 'clubPayrollOrders_v2';
+  var PRESETS_KEY = 'clubPayrollPresets_v1';
+
+  var DEFAULT_PRESETS = { projects: [], bosses: [], stageManagers: [], gifts: [] };
 
   var state = {
     tab: 'orders',
@@ -259,8 +272,30 @@
     previewMessage: '',
     staff: [],
     orders: [],
-    month: currentMonth()
+    month: currentMonth(),
+    presets: { projects: [], bosses: [], stageManagers: [], gifts: [] }
   };
+
+  /* 快捷录单表单状态 */
+  var quickForm = {
+    date: today(),
+    boss: '',
+    project: '',
+    staffNames: [],
+    stageManager: '',
+    gift: '',
+    unitPrice: '',
+    quantity: '1',
+    amount: '',
+    amountTouched: false
+  };
+
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
 
   /* ================= 云端（Supabase）数据层 ================= */
 
@@ -341,8 +376,15 @@
           cloud.lastWriteAt = remoteAt;
           state.staff = row.staff || [];
           state.orders = row.orders || [];
+          if (row.presets) {
+            state.presets = Object.assign(
+              { projects: [], bosses: [], stageManagers: [], gifts: [] },
+              row.presets
+            );
+          }
 
           renderAll();
+          renderQuickPanel();
           showToast('已同步其他设备的新数据');
         })
       .subscribe();
@@ -376,7 +418,7 @@
     if (cloud.enabled) {
       return cloud.client
         .from('club_state')
-        .select('staff, orders, updated_at')
+        .select('staff, orders, presets, updated_at')
         .eq('id', 'main')
         .single()
         .then(function (res) {
@@ -387,6 +429,12 @@
           if (res.data) {
             state.staff = res.data.staff || [];
             state.orders = res.data.orders || [];
+            if (res.data.presets) {
+              state.presets = Object.assign(
+                { projects: [], bosses: [], stageManagers: [], gifts: [] },
+                res.data.presets
+              );
+            }
             cloud.lastWriteAt = new Date(res.data.updated_at).getTime();
           }
         })
@@ -397,19 +445,30 @@
 
     state.staff = readStore(STAFF_KEY);
     state.orders = readStore(ORDER_KEY);
+
+    var savedPresets = readStore(PRESETS_KEY);
+    if (savedPresets && !Array.isArray(savedPresets)) {
+      state.presets = Object.assign({}, DEFAULT_PRESETS, savedPresets);
+    }
     return Promise.resolve();
   }
 
   /* 返回 Promise<boolean>：是否保存成功 */
-  function saveAll(staff, orders) {
+  function saveAll(staff, orders, presets) {
     state.staff = staff;
     state.orders = orders;
+    if (presets) state.presets = presets;
     renderAll();
 
     if (cloud.enabled) {
       return cloud.client
         .from('club_state')
-        .upsert({ id: 'main', staff: staff, orders: orders })
+        .upsert({
+          id: 'main',
+          staff: staff,
+          orders: orders,
+          presets: state.presets
+        })
         .select('updated_at')
         .single()
         .then(function (res) {
@@ -428,6 +487,7 @@
 
     if (!writeStore(STAFF_KEY, staff)) return Promise.resolve(false);
     if (!writeStore(ORDER_KEY, orders)) return Promise.resolve(false);
+    writeStore(PRESETS_KEY, state.presets);
     return Promise.resolve(true);
   }
 
@@ -514,11 +574,216 @@
     });
 
     $('panel-orders').hidden = tab !== 'orders';
+    $('panel-quick').hidden = tab !== 'quick';
     $('panel-staff').hidden = tab !== 'staff';
     $('panel-payroll').hidden = tab !== 'payroll';
 
     if (tab === 'payroll') {
       renderPayrollPanel();
+    }
+    if (tab === 'quick') {
+      renderQuickPanel();
+    }
+  }
+
+  /* ================= 快捷录单 ================= */
+
+  var PRESET_GROUPS = [
+    { key: 'bosses', label: '老板', field: 'boss' },
+    { key: 'projects', label: '项目', field: 'project' },
+    { key: 'stageManagers', label: '场控', field: 'stageManager' },
+    { key: 'gifts', label: '礼物', field: 'gift' }
+  ];
+
+  /* 渲染一组预设 chips：点选填入表单，× 删除预设 */
+  function renderChipGroup(group) {
+    var values = state.presets[group.key] || [];
+    var current = quickForm[group.field];
+    var html = '';
+
+    if (values.length === 0) {
+      html = '<div class="chips-empty">还没有预设，在下方输入后点「添加」</div>';
+    } else {
+      html = values.map(function (value) {
+        var active = value === current ? ' active' : '';
+        return '<span class="chip' + active + '" data-field="' + group.field +
+          '" data-value="' + escapeHtml(value) + '">' +
+          escapeHtml(value) +
+          '<button type="button" class="chip-del" data-group="' + group.key +
+          '" data-value="' + escapeHtml(value) + '" title="删除预设">×</button></span>';
+      }).join('');
+    }
+
+    return html;
+  }
+
+  function renderQuickPanel() {
+    // 表单回填（不覆盖用户正在输入的内容由 input 事件保证）
+    $('qDate').value = quickForm.date;
+    $('qUnitPrice').value = quickForm.unitPrice;
+    $('qQuantity').value = quickForm.quantity;
+    $('qAmount').value = quickForm.amount;
+
+    PRESET_GROUPS.forEach(function (group) {
+      $(group.field + 'Chips').innerHTML = renderChipGroup(group);
+      $(group.field + 'Input').value = quickForm[group.field];
+    });
+
+    // 陪陪（复用员工列表，多选）
+    var staffChips = $('qStaffChips');
+    $('qStaffEmpty').hidden = state.staff.length > 0;
+    staffChips.innerHTML = state.staff.map(function (person) {
+      var active = quickForm.staffNames.indexOf(person.name) !== -1 ? ' active' : '';
+      return '<span class="chip staff-chip' + active + '" data-staff="' +
+        escapeHtml(person.name) + '">' + escapeHtml(person.name) + '</span>';
+    }).join('');
+
+    renderQuickPreview();
+  }
+
+  /* 实时预览将生成的订单与分配 */
+  function renderQuickPreview() {
+    var box = $('qPreview');
+    var unitPrice = Number(quickForm.unitPrice);
+    var quantity = Number(quickForm.quantity);
+    var amount = Number(quickForm.amount);
+
+    if (!quickForm.boss || quickForm.staffNames.length === 0) {
+      box.innerHTML = '<div class="hint">选择老板和陪陪后，这里会显示分配预览。</div>';
+      return;
+    }
+
+    var total = Number.isFinite(amount) && amount > 0 ? amount :
+      (Number.isFinite(unitPrice) && Number.isFinite(quantity) ? unitPrice * quantity : 0);
+
+    if (!(total > 0)) {
+      box.innerHTML = '<div class="hint">填写单价和数量后显示分配预览。</div>';
+      return;
+    }
+
+    var allocations = splitAmount(quickForm.staffNames, total);
+    var html = '<div class="quick-preview-title">将生成订单 · ' +
+      escapeHtml(quickForm.boss) + ' · ' + escapeHtml(quickForm.project || '未填项目') +
+      ' · ' + quickForm.staffNames.length + ' 人</div>';
+    allocations.forEach(function (a) {
+      html += '<div class="allocation-line"><span>' + escapeHtml(a.staffName) +
+        '</span><span>¥' + escapeHtml(a.amount) + '</span></div>';
+    });
+    box.innerHTML = html;
+  }
+
+  function quickOnFieldInput(field, value) {
+    quickForm[field] = value;
+    renderQuickPreview();
+  }
+
+  /* 添加预设（去重，最多保留 30 个） */
+  function quickAddPreset(groupKey, value) {
+    var v = (value || '').trim();
+    if (!v) return;
+
+    var list = (state.presets[groupKey] || []).slice();
+    if (list.indexOf(v) !== -1) return;
+
+    list.unshift(v);
+    if (list.length > 30) list = list.slice(0, 30);
+    state.presets[groupKey] = list;
+
+    saveAll(state.staff, state.orders, state.presets).then(function () {
+      renderQuickPanel();
+    });
+  }
+
+  function quickRemovePreset(groupKey, value) {
+    var list = (state.presets[groupKey] || []).filter(function (item) {
+      return item !== value;
+    });
+    state.presets[groupKey] = list;
+
+    saveAll(state.staff, state.orders, state.presets).then(function () {
+      renderQuickPanel();
+    });
+  }
+
+  function quickSubmit() {
+    var boss = quickForm.boss.trim();
+    var project = quickForm.project.trim();
+    var date = quickForm.date;
+    var unitPrice = Number(quickForm.unitPrice);
+    var quantity = Number(quickForm.quantity);
+    var amount = Number(quickForm.amount);
+
+    if (!date) { showToast('请选择日期'); return; }
+    if (!boss) { showToast('请选择或输入老板'); return; }
+    if (quickForm.staffNames.length === 0) { showToast('请选择陪陪'); return; }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) { showToast('请填写正确的单价'); return; }
+    if (!Number.isFinite(quantity) || quantity < 1) { showToast('请填写正确的数量'); return; }
+
+    var total = Number.isFinite(amount) && amount > 0
+      ? Math.round(amount * 100) / 100
+      : Math.round(unitPrice * quantity * 100) / 100;
+
+    if (!(total > 0)) { showToast('请填写总额'); return; }
+
+    var companions = quickForm.staffNames.slice();
+    var order = {
+      id: makeId(),
+      fingerprint: buildFingerprint(date, boss, companions, project,
+        quickForm.gift.trim(), unitPrice, quantity, total, quickForm.stageManager.trim()),
+      date: date,
+      boss: boss,
+      companions: companions,
+      project: project,
+      gift: quickForm.gift.trim(),
+      unitPrice: unitPrice,
+      quantity: quantity,
+      amount: total,
+      stageManager: quickForm.stageManager.trim(),
+      allocations: splitAmount(companions, total)
+    };
+
+    var existing = state.orders.slice();
+    var duplicate = existing.some(function (o) {
+      return o.fingerprint === order.fingerprint;
+    });
+
+    function confirmSave() {
+      showModal({
+        title: '确认结单',
+        content: '确定保存这笔订单吗？\n' +
+          order.boss + ' · ' + (order.project || '未填项目') + ' · ' +
+          order.companions.length + ' 人 · 总额 ¥' + money(order.amount),
+        confirmText: '确认保存',
+        cancelText: '返回检查'
+      }).then(function (res) {
+        if (!res.confirm) return;
+
+        saveAll(state.staff, existing.concat([order]), state.presets).then(function (ok) {
+          if (!ok) return;
+
+          // 重置金额类字段，保留常用选择便于连续录单
+          quickForm.unitPrice = '';
+          quickForm.quantity = '1';
+          quickForm.amount = '';
+          quickForm.amountTouched = false;
+          quickForm.date = today();
+          renderQuickPanel();
+          showToast('保存成功');
+        });
+      });
+    }
+
+    if (duplicate) {
+      showModal({
+        title: '⚠️ 发现相同订单',
+        content: '已存在内容完全相同的订单。相同内容可能是正常下单，请核对后选择是否继续保存。',
+        confirmText: '继续确认',
+        cancelText: '返回检查'
+      }).then(function (res) {
+        if (res.confirm) confirmSave();
+      });
+    } else {
+      confirmSave();
     }
   }
 
@@ -757,7 +1022,7 @@
       }).then(function (res) {
         if (!res.confirm) return;
 
-        saveAll(state.staff, existing.concat(newOrders)).then(function (ok) {
+        saveAll(state.staff, existing.concat(newOrders), state.presets).then(function (ok) {
           if (!ok) return;
 
           state.batchText = '';
@@ -824,7 +1089,7 @@
       deduction: deduction
     }]);
 
-    saveAll(updated, state.orders).then(function (ok) {
+    saveAll(updated, state.orders, state.presets).then(function (ok) {
       if (!ok) return;
 
       $('staffName').value = '';
@@ -868,7 +1133,7 @@
         return item.id !== id;
       });
 
-      saveAll(updated, state.orders);
+      saveAll(updated, state.orders, state.presets);
     });
   }
 
@@ -883,7 +1148,7 @@
         return order.id !== id;
       });
 
-      saveAll(state.staff, updated);
+      saveAll(state.staff, updated, state.presets);
     });
   }
 
@@ -903,6 +1168,93 @@
     $('parseBtn').addEventListener('click', parseBatch);
     $('saveOrdersBtn').addEventListener('click', saveParsedOrders);
     $('addStaffBtn').addEventListener('click', addStaff);
+
+    /* ---- 快捷录单事件 ---- */
+    $('quickSubmitBtn').addEventListener('click', quickSubmit);
+
+    $('qDate').addEventListener('input', function (e) {
+      quickForm.date = e.target.value;
+    });
+
+    $('qUnitPrice').addEventListener('input', function (e) {
+      quickForm.unitPrice = e.target.value;
+      if (!quickForm.amountTouched) {
+        var p = Number(quickForm.unitPrice);
+        var q = Number(quickForm.quantity);
+        quickForm.amount =
+          Number.isFinite(p) && Number.isFinite(q) && p > 0 && q > 0
+            ? String(Math.round(p * q * 100) / 100)
+            : '';
+        $('qAmount').value = quickForm.amount;
+      }
+      renderQuickPreview();
+    });
+
+    $('qQuantity').addEventListener('input', function (e) {
+      quickForm.quantity = e.target.value;
+      if (!quickForm.amountTouched) {
+        var p = Number(quickForm.unitPrice);
+        var q = Number(quickForm.quantity);
+        quickForm.amount =
+          Number.isFinite(p) && Number.isFinite(q) && p > 0 && q > 0
+            ? String(Math.round(p * q * 100) / 100)
+            : '';
+        $('qAmount').value = quickForm.amount;
+      }
+      renderQuickPreview();
+    });
+
+    $('qAmount').addEventListener('input', function (e) {
+      quickForm.amount = e.target.value;
+      quickForm.amountTouched = true;
+      renderQuickPreview();
+    });
+
+    // 预设字段输入
+    PRESET_GROUPS.forEach(function (group) {
+      $(group.field + 'Input').addEventListener('input', function (e) {
+        quickOnFieldInput(group.field, e.target.value);
+      });
+      $(group.field + 'Input').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          quickAddPreset(group.key, quickForm[group.field]);
+        }
+      });
+      $(group.field + 'Add').addEventListener('click', function () {
+        quickAddPreset(group.key, quickForm[group.field]);
+      });
+    });
+
+    // 预设 chips：点选填入 / 删除预设；陪陪 chips：多选切换
+    document.addEventListener('click', function (e) {
+      var del = e.target.closest('.chip-del');
+      if (del) {
+        e.stopPropagation();
+        quickRemovePreset(del.dataset.group, del.dataset.value);
+        return;
+      }
+
+      var chip = e.target.closest('.chip');
+      if (!chip) return;
+
+      if (chip.dataset.staff !== undefined) {
+        var name = chip.dataset.staff;
+        var idx = quickForm.staffNames.indexOf(name);
+        if (idx === -1) {
+          quickForm.staffNames.push(name);
+        } else {
+          quickForm.staffNames.splice(idx, 1);
+        }
+        renderQuickPanel();
+        return;
+      }
+
+      if (chip.dataset.field !== undefined) {
+        quickForm[chip.dataset.field] = chip.dataset.value;
+        renderQuickPanel();
+      }
+    });
 
     $('monthInput').addEventListener('input', function (e) {
       state.month = e.target.value;

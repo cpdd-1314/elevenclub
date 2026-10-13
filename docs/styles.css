@@ -335,6 +335,113 @@ body {
   color: #7651a8;
 }
 
+/* ---------- 快捷录单：预设点选 chips ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chips-empty {
+  color: #958a9f;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1edf5;
+  color: #5c5468;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chip:hover {
+  background: #e6dff0;
+}
+
+.chip.active {
+  background: #7651a8;
+  color: #fff;
+}
+
+.chip.staff-chip.active {
+  background: #248354;
+}
+
+.chip-del {
+  border: none;
+  background: rgba(0, 0, 0, 0.12);
+  color: inherit;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.chip.active .chip-del {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.chip-del:hover {
+  background: #b34b55;
+  color: #fff;
+}
+
+.chip-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chip-add .text-input {
+  flex: 1;
+}
+
+.mini-add-btn {
+  border: none;
+  background: #eee3fa;
+  color: #5f4287;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.mini-add-btn:hover {
+  background: #e0d2f5;
+}
+
+.quick-preview {
+  background: #f7f2fc;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 16px;
+}
+
+.quick-preview-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #5f4287;
+  margin-bottom: 6px;
+}
+
 /* ---------- 空状态 / 页脚 ---------- */
 .empty {
   color: #958a9f;
